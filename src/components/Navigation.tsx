@@ -19,6 +19,7 @@ import {
   Home,
   ChevronDown,
   Check,
+  Layers,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppKit } from "@reown/appkit/react";
@@ -37,6 +38,11 @@ export function Navigation() {
       title: "交易",
       href: "/swap",
       icon: <Coins className="w-4 h-4" />,
+    },
+    {
+      title: "流动性",
+      href: "/liquidity",
+      icon: <Layers className="w-4 h-4" />,
     },
     {
       title: "农场",
