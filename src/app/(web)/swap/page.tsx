@@ -4,8 +4,11 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ArrowDown, Settings, Info } from "lucide-react";
+import { useAccount } from "wagmi";
 
 export default function SwapPage() {
+  const { address } = useAccount();
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 pt-20">
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -13,6 +16,7 @@ export default function SwapPage() {
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">代币交换</h1>
           <p className="text-gray-600">快速、安全地交换各种数字资产</p>
+          <p className="text-gray-600">当前钱包地址: {address}</p>
         </div>
 
         {/* Swap Card */}

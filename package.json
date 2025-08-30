@@ -6,7 +6,10 @@
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:db": "tsx scripts/test-database.ts",
+    "test:api": "tsx scripts/test-api.ts",
+    "test:functions": "tsx scripts/test-db-functions.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.1",
@@ -23,6 +26,7 @@
     "@reown/appkit": "^1.7.20",
     "@reown/appkit-adapter-wagmi": "^1.7.20",
     "@tanstack/react-query": "^5.85.5",
+    "@types/sqlite3": "^3.1.11",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.541.0",
@@ -32,6 +36,8 @@
     "react-dom": "19.1.0",
     "react-hook-form": "^7.62.0",
     "sonner": "^2.0.7",
+    "sqlite": "^5.1.1",
+    "sqlite3": "^5.1.7",
     "tailwind-merge": "^3.3.1",
     "viem": "^2.34.0",
     "wagmi": "^2.16.4",
@@ -46,6 +52,7 @@
     "eslint": "^9",
     "eslint-config-next": "15.5.0",
     "tailwindcss": "^4",
+    "tsx": "^4.20.5",
     "typescript": "^5"
   }
 }

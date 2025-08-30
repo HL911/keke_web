@@ -11,6 +11,7 @@ import {
   polygon,
   bsc,
 } from "@reown/appkit/networks";
+import { defineChain } from "viem";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { WagmiAdapter } from "@reown/appkit-adapter-wagmi";
 
@@ -29,13 +30,57 @@ const metadata = {
   icons: ["../../public/favicon.ico"],
 };
 
-const networks = [mainnet, sepolia, optimism, polygon, bsc, foundry] as [
-  typeof mainnet,
-  typeof sepolia,
-  typeof optimism,
-  typeof polygon,
-  typeof bsc,
-  typeof foundry
+// 自定义网络配置，指定RPC节点
+const customNetworks = {
+  mainnet,
+
+  // Sepolia测试网 - 使用Infura RPC (需要设置环境变量 INFURA_API_KEY)
+  sepolia: defineChain({
+    ...sepolia,
+    rpcUrls: {
+      default: {
+        http: [
+          "https://sepolia.infura.io/v3/53a58eac66a04d69bd2577334f365651",
+          "https://eth-sepolia.g.alchemy.com/v2/G46pa1JBnfNur5oZxYgm2",
+        ],
+      },
+      public: {
+        http: [
+          "https://rpc.sepolia.org",
+          "https://ethereum-sepolia.publicnode.com",
+        ],
+      },
+    },
+  }),
+
+  // 本地Foundry/Anvil网络 - 自定义RPC
+  foundry: defineChain({
+    ...foundry,
+    rpcUrls: {
+      default: { http: ["http://127.0.0.1:8545"] },
+      public: { http: ["http://127.0.0.1:8545"] },
+    },
+  }),
+
+  optimism,
+  polygon,
+  bsc,
+};
+
+const networks = [
+  customNetworks.mainnet,
+  customNetworks.sepolia,
+  customNetworks.foundry,
+  customNetworks.optimism,
+  customNetworks.polygon,
+  customNetworks.bsc,
+] as [
+  typeof customNetworks.mainnet,
+  typeof customNetworks.sepolia,
+  typeof customNetworks.foundry,
+  typeof customNetworks.optimism,
+  typeof customNetworks.polygon,
+  typeof customNetworks.bsc
 ];
 
 // 4. Create Wagmi Adapter
