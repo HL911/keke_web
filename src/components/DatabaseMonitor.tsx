@@ -11,11 +11,11 @@ interface DatabaseStats {
 }
 
 interface DatabaseData {
-  trading_pairs: any[];
-  tokens: any[];
-  transactions: any[];
-  user_positions: any[];
-  price_history: any[];
+  trading_pairs: Record<string, unknown>[];
+  tokens: Record<string, unknown>[];
+  transactions: Record<string, unknown>[];
+  user_positions: Record<string, unknown>[];
+  price_history: Record<string, unknown>[];
 }
 
 interface MonitorResponse {
@@ -55,7 +55,7 @@ export default function DatabaseMonitor() {
     }
   };
 
-  const formatValue = (value: any): string => {
+  const formatValue = (value: unknown): string => {
     if (value === null || value === undefined) return "N/A";
     if (typeof value === "boolean") return value ? "是" : "否";
     if (typeof value === "number") return value.toLocaleString();
@@ -66,7 +66,7 @@ export default function DatabaseMonitor() {
     return JSON.stringify(value);
   };
 
-  const renderTable = (tableData: any[], title: string) => {
+  const renderTable = (tableData: Record<string, unknown>[], title: string) => {
     if (!tableData || tableData.length === 0) {
       return (
         <div className="bg-gray-50 p-4 rounded-lg">
