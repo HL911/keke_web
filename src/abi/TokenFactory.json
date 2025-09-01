@@ -87,6 +87,55 @@
   },
   {
     "type": "function",
+    "name": "createBumpAndBuy",
+    "inputs": [
+      {
+        "name": "_name",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "_symbol",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "_introduction",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "_iconAddress",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "_twitterAddress",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "_telegramAddress",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "_websiteAddress",
+        "type": "string",
+        "internalType": "string"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "payable"
+  },
+  {
+    "type": "function",
     "name": "currentTokenIndex",
     "inputs": [],
     "outputs": [
