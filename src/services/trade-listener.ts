@@ -1,4 +1,4 @@
-import { createPublicClient, http, webSocket } from 'viem'
+import { createPublicClient, http, webSocket, formatEther } from 'viem'
 import { sepolia, foundry } from 'viem/chains'
 import { getDatabase} from "../app/api/utils/db-core"
 import poolAbi from '../abi/Pool.json'
@@ -68,7 +68,7 @@ const createClient = async (chainId: number) => {
 // 服务端网络配置 - 避免调用客户端hook
 const SERVER_NETWORK_CONTRACTS: Record<number, { poolAddress: string }> = {
   [sepolia.id]: {
-    poolAddress: '0x742d35Cc6634C0532925a3b8D4C9db96c3C4b1b1'
+    poolAddress: '0xf7Eaf5FA85D8dbac581B2594D931558DA969102c'
   }
 }
 
@@ -95,8 +95,8 @@ async function saveTradeEvent(event: any) {
       event.chainId.toString(),
       event.transactionHash,
       event.args.user,
-      event.args.tokenAmount.toString(),
-      event.args.ethAmount.toString(),
+      formatEther(event.args.tokenAmount),
+      formatEther(event.args.ethAmount),
       event.args.mint,
       new Date().toISOString(),
       event.args.isBuy ? 1 : 0,
