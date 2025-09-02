@@ -1,59 +1,63 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
-  insertToken,
-  upsertToken,
-  getTokenByAddress,
-  getTokenBySymbol,
-  getAllTokens,
-  searchTokens,
-  getVerifiedTokens,
-  updateTokenPrice,
-  type CreateTokenData
-} from '../utils/token-queries';
+  insertMemeToken,
+  upsertMemeToken,
+  getMemeTokenByAddress,
+  getAllMemeTokens,
+  searchMemeTokens,
+  getMemeTokenStats,
+  getLatestMemeTokens,
+  memeTokenExists,
+  type CreateMemeTokenData
+} from '../utils/meme-token-queries';
 
-// GET - 获取代币列表或搜索
+// GET - 获取 Meme 代币列表或搜索
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const action = searchParams.get('action');
     const address = searchParams.get('address');
-    const symbol = searchParams.get('symbol');
     const search = searchParams.get('search');
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = parseInt(searchParams.get('offset') || '0');
+    const orderBy = searchParams.get('orderBy') as 'created_at' | 'market_cap' | 'volume_24h' || 'created_at';
+    const orderDirection = searchParams.get('orderDirection') as 'ASC' | 'DESC' || 'DESC';
 
     switch (action) {
-      case 'verified':
-        const verifiedTokens = await getVerifiedTokens();
-        return NextResponse.json({ success: true, data: verifiedTokens });
+      case 'stats':
+        const stats = await getMemeTokenStats();
+        return NextResponse.json({ success: true, data: stats });
+
+      case 'latest':
+        const latestLimit = parseInt(searchParams.get('limit') || '10');
+        const latest = await getLatestMemeTokens(latestLimit);
+        return NextResponse.json({ success: true, data: latest });
+
+      case 'exists':
+        if (!address) {
+          return NextResponse.json(
+            { success: false, error: '缺少地址参数' },
+            { status: 400 }
+          );
+        }
+        const exists = await memeTokenExists(address);
+        return NextResponse.json({ success: true, data: { exists } });
 
       case 'get':
-        if (address) {
-          const tokenByAddress = await getTokenByAddress(address);
-          if (!tokenByAddress) {
-            return NextResponse.json(
-              { success: false, error: '代币不存在' },
-              { status: 404 }
-            );
-          }
-          return NextResponse.json({ success: true, data: tokenByAddress });
+        if (!address) {
+          return NextResponse.json(
+            { success: false, error: '缺少地址参数' },
+            { status: 400 }
+          );
         }
-        
-        if (symbol) {
-          const tokenBySymbol = await getTokenBySymbol(symbol);
-          if (!tokenBySymbol) {
-            return NextResponse.json(
-              { success: false, error: '代币不存在' },
-              { status: 404 }
-            );
-          }
-          return NextResponse.json({ success: true, data: tokenBySymbol });
+        const token = await getMemeTokenByAddress(address);
+        if (!token) {
+          return NextResponse.json(
+            { success: false, error: '代币不存在' },
+            { status: 404 }
+          );
         }
-        
-        return NextResponse.json(
-          { success: false, error: '缺少地址或符号参数' },
-          { status: 400 }
-        );
+        return NextResponse.json({ success: true, data: token });
 
       case 'search':
         if (!search) {
@@ -62,16 +66,16 @@ export async function GET(request: NextRequest) {
             { status: 400 }
           );
         }
-        const searchResults = await searchTokens(search);
+        const searchResults = await searchMemeTokens(search, limit, offset);
         return NextResponse.json({ success: true, data: searchResults });
 
       default:
         // 获取所有代币列表
-        const allTokens = await getAllTokens();
+        const allTokens = await getAllMemeTokens(limit, offset, orderBy, orderDirection);
         return NextResponse.json({ success: true, data: allTokens });
     }
   } catch (error) {
-    console.error('获取代币失败:', error);
+    console.error('获取 Meme 代币失败:', error);
     return NextResponse.json(
       { success: false, error: '服务器内部错误' },
       { status: 500 }
@@ -79,7 +83,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - 创建新的代币
+// POST - 创建新的 Meme 代币
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -98,7 +102,7 @@ export async function POST(request: NextRequest) {
       telegramAddress,
       websiteAddress,
       is_verified
-    } = body as CreateTokenData;
+    } = body as CreateMemeTokenData;
 
     // 验证必需字段
     if (!address || !symbol || !name) {
@@ -117,8 +121,8 @@ export async function POST(request: NextRequest) {
     }
 
     // 检查代币是否已存在
-    const existingToken = await getTokenByAddress(address);
-    if (existingToken) {
+    const exists = await memeTokenExists(address);
+    if (exists) {
       return NextResponse.json(
         { success: false, error: '该地址的代币已存在' },
         { status: 409 }
@@ -126,7 +130,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 创建代币数据
-    const tokenData: CreateTokenData = {
+    const tokenData: CreateMemeTokenData = {
       address,
       symbol,
       name,
@@ -144,21 +148,21 @@ export async function POST(request: NextRequest) {
     };
 
     // 插入到数据库
-    await insertToken(tokenData);
+    await insertMemeToken(tokenData);
 
     // 返回创建的代币信息
-    const createdToken = await getTokenByAddress(address);
+    const createdToken = await getMemeTokenByAddress(address);
     
     return NextResponse.json(
       { 
         success: true, 
-        message: '代币创建成功',
+        message: 'Meme 代币创建成功',
         data: createdToken 
       },
       { status: 201 }
     );
   } catch (error) {
-    console.error('创建代币失败:', error);
+    console.error('创建 Meme 代币失败:', error);
     return NextResponse.json(
       { success: false, error: '服务器内部错误' },
       { status: 500 }
@@ -166,7 +170,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// PUT - 更新或插入代币
+// PUT - 更新或插入 Meme 代币
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
@@ -185,7 +189,7 @@ export async function PUT(request: NextRequest) {
       telegramAddress,
       websiteAddress,
       is_verified
-    } = body as CreateTokenData;
+    } = body as CreateMemeTokenData;
 
     // 验证必需字段
     if (!address || !symbol || !name) {
@@ -204,7 +208,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // 创建代币数据
-    const tokenData: CreateTokenData = {
+    const tokenData: CreateMemeTokenData = {
       address,
       symbol,
       name,
@@ -222,78 +226,20 @@ export async function PUT(request: NextRequest) {
     };
 
     // 更新或插入到数据库
-    await upsertToken(tokenData);
+    await upsertMemeToken(tokenData);
 
     // 返回更新后的代币信息
-    const updatedToken = await getTokenByAddress(address);
+    const updatedToken = await getMemeTokenByAddress(address);
     
     return NextResponse.json(
       { 
         success: true, 
-        message: '代币更新成功',
+        message: 'Meme 代币更新成功',
         data: updatedToken 
       }
     );
   } catch (error) {
-    console.error('更新代币失败:', error);
-    return NextResponse.json(
-      { success: false, error: '服务器内部错误' },
-      { status: 500 }
-    );
-  }
-}
-
-// PATCH - 更新代币价格信息
-export async function PATCH(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const { address, price_usd, market_cap, volume_24h } = body;
-
-    // 验证必需字段
-    if (!address) {
-      return NextResponse.json(
-        { success: false, error: '缺少地址参数' },
-        { status: 400 }
-      );
-    }
-
-    // 验证地址格式
-    if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
-      return NextResponse.json(
-        { success: false, error: '无效的地址格式' },
-        { status: 400 }
-      );
-    }
-
-    // 检查代币是否存在
-    const existingToken = await getTokenByAddress(address);
-    if (!existingToken) {
-      return NextResponse.json(
-        { success: false, error: '代币不存在' },
-        { status: 404 }
-      );
-    }
-
-    // 更新价格信息
-    await updateTokenPrice(
-      address,
-      price_usd || existingToken.price_usd,
-      market_cap || existingToken.market_cap,
-      volume_24h || existingToken.volume_24h
-    );
-
-    // 返回更新后的代币信息
-    const updatedToken = await getTokenByAddress(address);
-    
-    return NextResponse.json(
-      { 
-        success: true, 
-        message: '代币价格更新成功',
-        data: updatedToken 
-      }
-    );
-  } catch (error) {
-    console.error('更新代币价格失败:', error);
+    console.error('更新 Meme 代币失败:', error);
     return NextResponse.json(
       { success: false, error: '服务器内部错误' },
       { status: 500 }
