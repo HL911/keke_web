@@ -45,6 +45,23 @@ const TABLE_SCHEMAS = {
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `,
+    meme_tokens: `
+    CREATE TABLE IF NOT EXISTS meme_tokens (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      address TEXT UNIQUE NOT NULL,
+      symbol TEXT NOT NULL,
+      name TEXT NOT NULL,
+      decimals INTEGER NOT NULL DEFAULT 18,
+      total_supply TEXT NOT NULL DEFAULT '0',
+      price_usd REAL DEFAULT 0,
+      market_cap REAL DEFAULT 0,
+      volume_24h REAL DEFAULT 0,
+      logo_uri TEXT,
+      is_verified BOOLEAN DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `,
 
   transactions: `
     CREATE TABLE IF NOT EXISTS transactions (
