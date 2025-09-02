@@ -1,0 +1,212 @@
+项目说明:
+  目标: |
+    KekeSwap 是一个面向 Meme 文化和去中心化金融的下一代社区驱动平台。通过 KekeSwap DEX、Keke.fun
+    发射平台和平台代币 KEKE，我们旨在构建一个集娱乐、创新和长期价值于一体的 Meme 生态系统。
+    KekeSwap 不仅降低了发币门槛，更通过平台代币 KEKE 的赋能，让整个生态形成可持续发展的闭环。
+    描述: 当前工程已经实现了基础的 DEX 功能框架，包括代币交换、流动性挖矿和数据分析模块。
+    我们需要在现有基础上完善功能，确保系统的稳定性和用户体验。
+
+  业务视角角色拆解:
+    trader 交易者:
+      交易者可以在平台上进行各种代币的交换，查看实时价格和流动性信息，参与交易获得最佳兑换率。
+    liquidity_provider 流动性提供者:
+      流动性提供者可以向交易对提供流动性，获得交易手续费分成和 KEKE 代币奖励。
+    farmer 农场用户:
+      农场用户可以质押 LP 代币参与流动性挖矿，获得 KEKE 代币奖励和额外收益。
+    analyst 数据分析师:
+      数据分析师可以查看平台的各种统计数据，包括交易量、流动性、价格趋势等信息。
+    create_token 代币创建者:
+      代币创建者可以在平台上创建自己的代币，设置代币名称、符号、总供应量等参数。
+
+  工程目标:
+    WEB前端: 当前工程是整个项目的 WEB 客户端，技术栈选用 Next.js 15.5.0 全栈架构，目标实现一个功能完整、用户体验优秀的去中心化交易所前端，支持代币交换、流动性挖矿和数据分析功能。
+    后端: 使用 Node.js 在 src/app/api 下开发实现当前工程的 API 服务，提供完整的后端支持，包括数据库管理、合约交互和实时数据同步。
+
+  技术规范:
+    合约交互规范:
+      - 所有ABI的使用都必须自己写hook，参考 src/hooks/usePool.ts 的实现方式
+      - 获取合约地址都通过 src/hooks/useContract.ts 统一管理
+      - 每个合约都需要创建对应的自定义hook，封装合约的读写操作
+      - hook命名规范：use + 合约名称，如 useKekeswapRouter、useTokenFactory 等
+    
+    页面组织规范:
+      - 页面文件都参照 src/app/(web)/create-token 这个格式进行组织
+      - 每个功能模块都应该有独立的目录，包含 page.tsx、components/ 和 hook/ 子目录
+      - 组件按功能分类放在对应的 components/ 目录下
+      - 页面专用的hook放在对应的 hook/ 目录下
+      - 保持代码结构清晰，便于维护和扩展
+
+
+  前端目标:
+    描述: |
+      基于现有的 Next.js 框架和 Web3 集成，实现完整的去中心化交易所功能模块。
+      所有组件都需要支持钱包连接，并与智能合约进行交互。
+      
+    技术实现要求:
+      - 所有合约交互必须通过自定义hook实现，不允许直接在组件中调用合约
+      - 合约地址获取统一通过 src/hooks/useContract.ts 管理，支持多链切换
+      - 页面结构参照 src/app/(web)/create-token 格式，保持项目结构一致性
+      - 每个ABI文件都需要对应的hook文件，封装合约的所有读写操作
+      - hook文件放置规则：通用hook放在 src/hooks/，页面专用hook放在对应页面的 hook/ 目录
+
+    SWAP模块 src/app/(web)/swap/page.tsx:
+      功能:
+        - 代币交换界面，支持各种 ERC20 代币之间的兑换
+        - 集成钱包连接，显示用户地址和余额
+        - 实时价格显示和滑点设置
+        - 交换方向切换和设置功能
+      技术实现:
+        - 使用 wagmi 的 useAccount Hook 获取钱包信息
+        - 调用 KekeswapRouter 合约进行代币交换
+        - 支持的交易对: KEKE/ETH, KEKE/USDC 等
+      UI特性:
+        - 响应式设计，支持移动端
+        - 渐变背景和现代化卡片布局
+        - 实时汇率计算和预估输出
+
+    Farm模块 src/app/(web)/farm/page.tsx:
+      功能:
+        - 流动性挖矿页面，用户可质押 LP 代币获得 KEKE 奖励
+        - 显示各个矿池的 APY、TVL、已质押数量等信息
+        - 支持质押、解质押和收获奖励操作
+        - 矿池性能对比和收益计算
+      矿池配置:
+        - KEKE-ETH LP: 45.2% APY
+        - USDC-ETH LP: 32.8% APY
+        - WBTC-ETH LP: 28.5% APY
+      技术实现:
+        - 调用农场合约进行质押和奖励分发
+        - 实时计算用户收益和待领取奖励
+        - 支持批量操作和自动复投
+    
+    create_token 代币创建者:
+      功能:
+        - 代币创建页面，用户可创建自己的代币
+        - 输入代币名称、符号、总供应量等参数
+        - 支持自定义代币参数和合约部署
+        - 代币创建成功后，自动添加到交易对列表
+        - 支持代币交易对创建和配置
+      
+      
+
+    Analytics模块 src/app/(web)/analytics/page.tsx:
+      功能:
+        - 数据分析和市场概览页面
+        - 显示交易对价格、24小时变化、交易量、流动性等数据
+        - 最近交易记录和市场统计信息
+        - 价格图表和趋势分析
+      数据展示:
+        - 实时价格图表和趋势分析
+        - 交易对性能对比
+        - 用户交易历史
+        - 平台总体统计数据
+
+    核心组件:
+      AppkitProvider src/components/AppkitProvider.tsx:
+        功能:
+          - Web3 钱包连接提供者
+          - 支持多种钱包类型
+          - 网络切换和账户管理
+      Navigation src/components/Navigation.tsx:
+        功能:
+          - 主导航组件
+          - 钱包连接状态显示
+          - 页面路由导航
+      ERC20Token src/components/ERC20Token.tsx:
+        功能:
+          - ERC20 代币信息显示组件
+          - 代币余额查询
+          - 代币授权管理
+          
+
+  服务端目标:
+    目标规划:
+      根据前端功能需求，提供完整的 API 服务支持，包括数据查询、合约交互和实时数据同步。
+
+    src/app/api/contracts/route.ts:
+      功能:
+        - 合约信息查询接口
+        - 合约状态监控接口
+      业务依赖路径: 直接与智能合约交互，获取合约状态和配置信息
+      方法:
+        GET:
+          - 参数: contractAddress, chainId
+          - 权限: 公开访问
+          - 返回: "{ address, abi, status, blockNumber }"
+          - 调用: 合约状态查询方法
+
+    src/app/api/tokens/route.ts:
+      功能:
+        - 代币信息查询接口
+        - 代币价格和余额查询
+      业务依赖路径: 调用 ERC20 合约获取代币信息
+      方法:
+        GET:
+          - 参数: tokenAddress, userAddress?, chainId
+          - 权限: 公开访问
+          - 返回: "{ symbol, name, decimals, totalSupply, price?, balance? }"
+          - 调用: ERC20 合约查询方法
+
+    src/app/api/pairs/route.ts:
+      功能:
+        - 交易对信息查询接口
+        - 流动性和价格数据
+      业务依赖路径: 调用 KekeswapFactory 和 Pair 合约获取交易对数据
+      方法:
+        GET:
+          - 参数: token0?, token1?, page?, limit?
+          - 权限: 公开访问
+          - 返回: "{ pairs[], totalCount, pagination }"
+          - 调用: 工厂合约和交易对合约查询方法
+
+    src/app/api/user-positions/route.ts:
+      功能:
+        - 用户持仓查询接口
+        - 流动性提供和农场质押信息
+      业务依赖路径: 调用相关合约获取用户持仓数据
+      方法:
+        GET:
+          - 参数: userAddress, chainId
+          - 权限: 需要钱包签名验证
+          - 返回: "{ liquidityPositions[], farmPositions[], totalValue }"
+          - 调用: LP 合约和农场合约查询方法
+
+    src/app/api/database-monitor/route.ts:
+      功能:
+        - 数据库状态监控接口
+        - 系统健康检查
+      方法:
+        GET:
+          - 参数: 无
+          - 权限: 公开访问
+          - 返回: "{ status, connections, lastUpdate, tables }"
+          - 功能: 监控数据库连接状态和数据同步情况
+
+    src/app/api/health/route.ts:
+      功能:
+        - 系统健康检查接口
+        - 服务状态监控
+      方法:
+        GET:
+          - 参数: 无
+          - 权限: 公开访问
+          - 返回: "{ status, timestamp, services }"
+          - 功能: 检查各个服务模块的运行状态
+
+    数据库工具 src/app/api/utils/sqlite-db.ts:
+      功能:
+        - SQLite 数据库连接和操作工具
+        - 数据缓存和同步机制
+      技术实现:
+        - 提供数据库连接池管理
+        - 实现数据缓存策略
+        - 支持事务处理和错误恢复
+
+    通用技术要求:
+      - 所有接口都需要完善的错误处理和日志记录
+      - 合约交互需要失败重试机制和超时处理
+      - 实现数据缓存策略以提升性能
+      - API 限流和安全防护机制
+      - 支持多链兼容性设计
+      - 实时数据同步和事件监听机制
+      - 完整的单元测试和集成测试覆盖
