@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { useWriteContract, useWaitForTransactionReceipt, useReadContract, usePublicClient } from 'wagmi';
 import { parseEther, decodeEventLog } from 'viem';
-import TokenFactoryABI from '../abi/TokenFactory.json';
+import TokenFactoryABI from '../../abi/TokenFactory.json';
 
 interface CreateTokenParams {
   name: string;
   symbol: string;
   description: string;
-  iconAddress: string;
+  logo_uri: string;
   twitterAddress: string;
   telegramAddress: string;
   websiteAddress: string;
@@ -34,7 +34,9 @@ interface UseTokenFactoryReturn {
   txHash: string | undefined;
 }
 
-export function useTokenFactory(contractAddress: `0x${string}`): UseTokenFactoryReturn {
+export function useTokenFactory(
+  contractAddress: `0x${string}`
+): UseTokenFactoryReturn {
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -51,14 +53,14 @@ export function useTokenFactory(contractAddress: `0x${string}`): UseTokenFactory
   const { data: currentTokenIndex } = useReadContract({
     address: contractAddress,
     abi: TokenFactoryABI,
-    functionName: 'currentTokenIndex',
+    functionName: "currentTokenIndex",
   });
 
   // 读取所有代币
   const { data: tokens } = useReadContract({
     address: contractAddress,
     abi: TokenFactoryABI,
-    functionName: 'getTokens',
+    functionName: "getTokens",
   });
 
   const publicClient = usePublicClient();
@@ -75,12 +77,12 @@ export function useTokenFactory(contractAddress: `0x${string}`): UseTokenFactory
       writeContract({
         address: contractAddress,
         abi: TokenFactoryABI,
-        functionName: 'createBump',
+        functionName: "createBump",
         args: [
           params.name,
           params.symbol,
           params.description,
-          params.iconAddress,
+          params.logo_uri,
           params.twitterAddress,
           params.telegramAddress,
           params.websiteAddress,
@@ -154,12 +156,12 @@ export function useTokenFactory(contractAddress: `0x${string}`): UseTokenFactory
       writeContract({
         address: contractAddress,
         abi: TokenFactoryABI,
-        functionName: 'createBumpAndBuy',
+        functionName: "createBumpAndBuy",
         args: [
           params.name,
           params.symbol,
           params.description,
-          params.iconAddress,
+          params.logo_uri,
           params.twitterAddress,
           params.telegramAddress,
           params.websiteAddress,

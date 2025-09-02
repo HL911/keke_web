@@ -11,7 +11,7 @@ export interface MemeToken {
   market_cap: number;
   volume_24h: number;
   description?: string;
-  iconAddress?: string;
+  logo_uri?: string;
   twitterAddress?: string;
   telegramAddress?: string;
   websiteAddress?: string;
@@ -31,7 +31,6 @@ export interface CreateMemeTokenData {
   volume_24h?: number;
   logo_uri?: string;
   description?: string;
-  iconAddress?: string;
   twitterAddress?: string;
   telegramAddress?: string;
   websiteAddress?: string;
@@ -52,7 +51,7 @@ export async function insertMemeToken(tokenData: CreateMemeTokenData): Promise<v
     market_cap = 0,
     volume_24h = 0,
     description,
-    iconAddress,
+    logo_uri,
     twitterAddress,
     telegramAddress,
     websiteAddress,
@@ -63,7 +62,7 @@ export async function insertMemeToken(tokenData: CreateMemeTokenData): Promise<v
     `
     INSERT INTO meme_tokens (
       address, symbol, name, decimals, total_supply, price_usd, 
-      market_cap, volume_24h, description, iconAddress, 
+      market_cap, volume_24h, description, logo_uri, 
       twitterAddress, telegramAddress, websiteAddress, is_verified, 
       created_at, updated_at
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
@@ -78,7 +77,7 @@ export async function insertMemeToken(tokenData: CreateMemeTokenData): Promise<v
       market_cap,
       volume_24h,
       description,
-      iconAddress,
+      logo_uri,
       twitterAddress,
       telegramAddress,
       websiteAddress,
@@ -101,7 +100,7 @@ export async function upsertMemeToken(tokenData: CreateMemeTokenData): Promise<v
     market_cap = 0,
     volume_24h = 0,
     description,
-    iconAddress,
+    logo_uri,
     twitterAddress,
     telegramAddress,
     websiteAddress,
@@ -112,7 +111,7 @@ export async function upsertMemeToken(tokenData: CreateMemeTokenData): Promise<v
     `
     INSERT OR REPLACE INTO meme_tokens (
       address, symbol, name, decimals, total_supply, price_usd, 
-      market_cap, volume_24h, description, iconAddress, 
+      market_cap, volume_24h, description, logo_uri, 
       twitterAddress, telegramAddress, websiteAddress, is_verified, 
       created_at, updated_at
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 
@@ -130,7 +129,7 @@ export async function upsertMemeToken(tokenData: CreateMemeTokenData): Promise<v
       market_cap,
       volume_24h,
       description,
-      iconAddress,
+      logo_uri,
       twitterAddress,
       telegramAddress,
       websiteAddress,

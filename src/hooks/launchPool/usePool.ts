@@ -1,7 +1,11 @@
-import { useState } from 'react';
-import { useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
-import { parseEther, formatEther } from 'viem';
-import PoolABI from '../abi/Pool.json';
+import { useState } from "react";
+import {
+  useWriteContract,
+  useWaitForTransactionReceipt,
+  useReadContract,
+} from "wagmi";
+import { parseEther, formatEther } from "viem";
+import PoolABI from "../../abi/Pool.json";
 
 interface BondingCurveData {
   tokenMint: string;
@@ -20,15 +24,31 @@ interface UsePoolReturn {
   // 创建池子
   createPool: (tokenAddress: `0x${string}`, amount: string) => Promise<void>;
   // 预售：用ETH购买代币
-  presaleSwapETHForToken: (tokenAddress: `0x${string}`, ethAmount: string, to?: `0x${string}`) => Promise<void>;
+  presaleSwapETHForToken: (
+    tokenAddress: `0x${string}`,
+    ethAmount: string,
+    to?: `0x${string}`
+  ) => Promise<void>;
   // 预售：用代币换ETH
-  presaleSwapTokenForETH: (tokenAddress: `0x${string}`, tokenAmount: string, to?: `0x${string}`) => Promise<void>;
+  presaleSwapTokenForETH: (
+    tokenAddress: `0x${string}`,
+    tokenAmount: string,
+    to?: `0x${string}`
+  ) => Promise<void>;
   // 计算预售：ETH换代币
-  calculateETHForToken: (tokenAddress: `0x${string}`, ethAmount: string) => bigint | undefined;
+  calculateETHForToken: (
+    tokenAddress: `0x${string}`,
+    ethAmount: string
+  ) => bigint | undefined;
   // 计算预售：代币换ETH
-  calculateTokenForETH: (tokenAddress: `0x${string}`, tokenAmount: string) => bigint | undefined;
+  calculateTokenForETH: (
+    tokenAddress: `0x${string}`,
+    tokenAmount: string
+  ) => bigint | undefined;
   // 获取绑定曲线数据
-  getBondingCurve: (tokenAddress: `0x${string}`) => BondingCurveData | undefined;
+  getBondingCurve: (
+    tokenAddress: `0x${string}`
+  ) => BondingCurveData | undefined;
   // 获取市值
   getMarketCap: (tokenAddress: `0x${string}`) => bigint | undefined;
   // 获取创建费用
@@ -56,7 +76,7 @@ export function usePool(contractAddress: `0x${string}`): UsePoolReturn {
   const { data: createFee } = useReadContract({
     address: contractAddress,
     abi: PoolABI,
-    functionName: 'createFee',
+    functionName: "createFee",
   });
 
   // 创建池子
@@ -68,13 +88,13 @@ export function usePool(contractAddress: `0x${string}`): UsePoolReturn {
       await writeContract({
         address: contractAddress,
         abi: PoolABI,
-        functionName: 'createPool',
+        functionName: "createPool",
         args: [tokenAddress, parseEther(amount)],
         value: createFee as bigint,
       });
     } catch (err: any) {
-      setError(err.message || '创建池子失败');
-      console.error('创建池子失败:', err);
+      setError(err.message || "创建池子失败");
+      console.error("创建池子失败:", err);
     } finally {
       setIsLoading(false);
     }
@@ -93,13 +113,13 @@ export function usePool(contractAddress: `0x${string}`): UsePoolReturn {
       await writeContract({
         address: contractAddress,
         abi: PoolABI,
-        functionName: 'presaleSwapETHForToken',
+        functionName: "presaleSwapETHForToken",
         args: [tokenAddress, to || tokenAddress],
         value: parseEther(ethAmount),
       });
     } catch (err: any) {
-      setError(err.message || '购买代币失败');
-      console.error('购买代币失败:', err);
+      setError(err.message || "购买代币失败");
+      console.error("购买代币失败:", err);
     } finally {
       setIsLoading(false);
     }
@@ -118,12 +138,12 @@ export function usePool(contractAddress: `0x${string}`): UsePoolReturn {
       await writeContract({
         address: contractAddress,
         abi: PoolABI,
-        functionName: 'presaleSwapTokenForETH',
+        functionName: "presaleSwapTokenForETH",
         args: [tokenAddress, to || tokenAddress, parseEther(tokenAmount)],
       });
     } catch (err: any) {
-      setError(err.message || '出售代币失败');
-      console.error('出售代币失败:', err);
+      setError(err.message || "出售代币失败");
+      console.error("出售代币失败:", err);
     } finally {
       setIsLoading(false);
     }
@@ -134,13 +154,24 @@ export function usePool(contractAddress: `0x${string}`): UsePoolReturn {
     const { data } = useReadContract({
       address: contractAddress,
       abi: PoolABI,
-      functionName: 'bondingCurve',
+      functionName: "bondingCurve",
       args: [tokenAddress],
     });
 
     if (!data) return undefined;
 
-    const [tokenMint, virtualTokenReserves, virtualEthReserves, realTokenReserves, realEthReserves, tokenTotalSupply, mcapLimit, presaleOpen, tradingOpen, poolFail] = data as any[];
+    const [
+      tokenMint,
+      virtualTokenReserves,
+      virtualEthReserves,
+      realTokenReserves,
+      realEthReserves,
+      tokenTotalSupply,
+      mcapLimit,
+      presaleOpen,
+      tradingOpen,
+      poolFail,
+    ] = data as any[];
 
     return {
       tokenMint,
@@ -161,29 +192,35 @@ export function usePool(contractAddress: `0x${string}`): UsePoolReturn {
     const { data } = useReadContract({
       address: contractAddress,
       abi: PoolABI,
-      functionName: 'mCap',
+      functionName: "mCap",
       args: [tokenAddress],
     });
     return data as bigint | undefined;
   };
 
   // 计算预售：ETH换代币
-  const calculateETHForToken = (tokenAddress: `0x${string}`, ethAmount: string) => {
+  const calculateETHForToken = (
+    tokenAddress: `0x${string}`,
+    ethAmount: string
+  ) => {
     const { data } = useReadContract({
       address: contractAddress,
       abi: PoolABI,
-      functionName: 'calPresaleSwapETHForToken',
+      functionName: "calPresaleSwapETHForToken",
       args: [tokenAddress, parseEther(ethAmount)],
     });
     return data as bigint | undefined;
   };
 
   // 计算预售：代币换ETH
-  const calculateTokenForETH = (tokenAddress: `0x${string}`, tokenAmount: string) => {
+  const calculateTokenForETH = (
+    tokenAddress: `0x${string}`,
+    tokenAmount: string
+  ) => {
     const { data } = useReadContract({
       address: contractAddress,
       abi: PoolABI,
-      functionName: 'calPresaleSwapTokenForETH',
+      functionName: "calPresaleSwapTokenForETH",
       args: [tokenAddress, parseEther(tokenAmount)],
     });
     return data as bigint | undefined;

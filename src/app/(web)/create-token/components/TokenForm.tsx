@@ -17,7 +17,7 @@ interface TokenFormData {
   website: string;
   twitter: string;
   telegram: string;
-  iconAddress: string;
+  logo_uri: string;
   enableTrading: boolean;
   tradingStartTime: string;
   image: File | null;
@@ -43,7 +43,7 @@ export function TokenForm({ onSubmit, isLoading = false }: TokenFormProps) {
     website: '',
     twitter: '',
     telegram: '',
-    iconAddress: '',
+    logo_uri: '',
     enableTrading: false,
     tradingStartTime: '',
     image: null

@@ -63,7 +63,7 @@ export interface CreateTokenData {
   market_cap?: number;
   volume_24h?: number;
   description?: string;
-  iconAddress?: string;
+  logo_uri?: string;
   twitterAddress?: string;
   telegramAddress?: string;
   websiteAddress?: string;
@@ -84,7 +84,7 @@ export async function insertToken(tokenData: CreateTokenData): Promise<void> {
     market_cap = 0,
     volume_24h = 0,
     description,
-    iconAddress,
+    logo_uri,
     twitterAddress,
     telegramAddress,
     websiteAddress,
@@ -95,7 +95,7 @@ export async function insertToken(tokenData: CreateTokenData): Promise<void> {
     `
     INSERT INTO tokens (
       address, symbol, name, decimals, total_supply, price_usd, 
-      market_cap, volume_24h, description, iconAddress, 
+      market_cap, volume_24h, description, logo_uri, 
       twitterAddress, telegramAddress, websiteAddress, is_verified, 
       created_at, updated_at
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
@@ -110,7 +110,7 @@ export async function insertToken(tokenData: CreateTokenData): Promise<void> {
       market_cap,
       volume_24h,
       description,
-      iconAddress,
+      logo_uri,
       twitterAddress,
       telegramAddress,
       websiteAddress,
@@ -133,7 +133,7 @@ export async function upsertToken(tokenData: CreateTokenData): Promise<void> {
     market_cap = 0,
     volume_24h = 0,
     description,
-    iconAddress,
+    logo_uri,
     twitterAddress,
     telegramAddress,
     websiteAddress,
@@ -144,7 +144,7 @@ export async function upsertToken(tokenData: CreateTokenData): Promise<void> {
     `
     INSERT OR REPLACE INTO tokens (
       address, symbol, name, decimals, total_supply, price_usd, 
-      market_cap, volume_24h, description, iconAddress, 
+      market_cap, volume_24h, description, logo_uri, 
       twitterAddress, telegramAddress, websiteAddress, is_verified, 
       created_at, updated_at
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 
@@ -162,7 +162,7 @@ export async function upsertToken(tokenData: CreateTokenData): Promise<void> {
       market_cap,
       volume_24h,
       description,
-      iconAddress,
+      logo_uri,
       twitterAddress,
       telegramAddress,
       websiteAddress,

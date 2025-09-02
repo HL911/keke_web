@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { useTokenFactory, type CreateTokenResult } from '@/hooks/useTokenFactory';
+import { useTokenFactory, type CreateTokenResult } from '@/hooks/launchPool/useTokenFactory';
 import { useTokenFactoryAddress } from '@/hooks/useContract';
 import type { TokenFormData } from '../components/TokenForm';
 
@@ -18,7 +18,7 @@ export function useCreateToken() {
     website: '',
     twitter: '',
     telegram: '',
-    iconAddress: '',
+    logo_uri: '',
     enableTrading: false,
     tradingStartTime: '',
     image: null,
@@ -124,7 +124,7 @@ export function useCreateToken() {
         name: tokenData.name,
         symbol: tokenData.symbol,
         description: tokenData.description,
-        iconAddress: imageUrl,
+        logo_uri: imageUrl,
         twitterAddress: tokenData.twitter,
         telegramAddress: tokenData.telegram,
         websiteAddress: tokenData.website,
@@ -159,7 +159,6 @@ export function useCreateToken() {
               total_supply: '1000000000000000000000000', // 默认1M代币，18位小数
               logo_uri: imageUrl,
               description: tokenData.description,
-              iconAddress: tokenData.iconAddress,
               twitterAddress: tokenData.twitter,
               telegramAddress: tokenData.telegram,
               websiteAddress: tokenData.website,
@@ -187,7 +186,7 @@ export function useCreateToken() {
           website: '',
           twitter: '',
           telegram: '',
-          iconAddress: '',
+          logo_uri: '',
           enableTrading: false,
           tradingStartTime: '',
           image: null,
