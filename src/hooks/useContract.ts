@@ -14,13 +14,6 @@ interface NetworkContracts {
 
 // 不同网络的合约地址配置
 const NETWORK_CONTRACTS: Record<number, NetworkContracts> = {
-  // Foundry 本地网络
-  [foundry.id]: {
-    tokenFactoryAddress: "0x5FbDB2315678afecb367f032d93F642f64180aa3",
-    poolAddress: "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
-    kekeswapRouterAddress: "0x0000000000000000000000000000000000000000",
-    kekeswapFactoryAddress: "0x0000000000000000000000000000000000000000",
-  },
   // Sepolia 测试网络
   [sepolia.id]: {
     tokenFactoryAddress: "0x126DA8A2083B7b16358897aaCcf419A63BBBB24E", // 需要替换为实际部署地址
@@ -86,6 +79,39 @@ export function useKekeswapFactoryAddress(): string | null {
 export function useTokenAddress(symbol?: string): string | null {
   const { tokenConfig } = useTokenConfig(symbol);
   return tokenConfig?.address || null;
+}
+
+/**
+ * 获取所有支持网络的Pool合约地址
+ * @returns 包含网络名称和合约地址的数组
+ */
+export function getAllNetworkPoolAddresses(): Array<{network: string, address: string, chainId: number}> {
+  return getAllNetworkContractAddresses('poolAddress');
+}
+
+/**
+ * 获取所有支持网络的合约地址
+ * @param contractName 合约名称
+ * @returns 包含网络名称、合约地址和链ID的数组
+ */
+export function getAllNetworkContractAddresses(contractName: keyof NetworkContracts): Array<{network: string, address: string, chainId: number}> {
+  return Object.entries(NETWORK_CONTRACTS).map(([chainId, contracts]) => {
+    const id = parseInt(chainId);
+    const networkName = id === foundry.id ? 'foundry' : id === sepolia.id ? 'sepolia' : `chain-${id}`;
+    return {
+      network: networkName,
+      address: contracts[contractName],
+      chainId: id
+    };
+  });
+}
+
+/**
+ * 获取所有支持的链ID
+ * @returns 支持的链ID数组
+ */
+export function getSupportedChainIds(): number[] {
+  return Object.keys(NETWORK_CONTRACTS).map(chainId => parseInt(chainId));
 }
 
 // 导出类型

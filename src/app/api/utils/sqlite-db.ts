@@ -92,6 +92,21 @@ const TABLE_SCHEMAS = {
       FOREIGN KEY (pair_address) REFERENCES trading_pairs(pair_address)
     )
   `,
+
+  trades: `
+    CREATE TABLE IF NOT EXISTS trade_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      network TEXT NOT NULL,
+      tx_hash TEXT NOT NULL,
+      block_number INTEGER NOT NULL,
+      user_address TEXT NOT NULL,
+      token_amount TEXT NOT NULL DEFAULT '0',
+      eth_amount TEXT NOT NULL DEFAULT '0',
+      token_address TEXT,
+      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `,
 };
 
 // 创建索引
