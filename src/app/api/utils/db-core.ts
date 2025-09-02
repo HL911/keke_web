@@ -39,7 +39,11 @@ const TABLE_SCHEMAS = {
       price_usd REAL DEFAULT 0,
       market_cap REAL DEFAULT 0,
       volume_24h REAL DEFAULT 0,
-      logo_uri TEXT,
+      description TEXT,
+      iconAddress TEXT,
+      twitterAddress TEXT,
+      telegramAddress TEXT,
+      websiteAddress TEXT,
       is_verified BOOLEAN DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -56,7 +60,11 @@ const TABLE_SCHEMAS = {
       price_usd REAL DEFAULT 0,
       market_cap REAL DEFAULT 0,
       volume_24h REAL DEFAULT 0,
-      logo_uri TEXT,
+      description TEXT,
+      iconAddress TEXT,
+      twitterAddress TEXT,
+      telegramAddress TEXT,
+      websiteAddress TEXT,
       is_verified BOOLEAN DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -534,7 +542,11 @@ export interface Token {
   price_usd: number;
   market_cap: number;
   volume_24h: number;
-  logo_uri?: string;
+  description?: string;
+  iconAddress?: string;
+  twitterAddress?: string;
+  telegramAddress?: string;
+  websiteAddress?: string;
   is_verified: boolean;
   created_at: string;
   updated_at: string;

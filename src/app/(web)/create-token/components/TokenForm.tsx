@@ -17,6 +17,7 @@ interface TokenFormData {
   website: string;
   twitter: string;
   telegram: string;
+  iconAddress: string;
   enableTrading: boolean;
   tradingStartTime: string;
   image: File | null;
@@ -42,6 +43,7 @@ export function TokenForm({ onSubmit, isLoading = false }: TokenFormProps) {
     website: '',
     twitter: '',
     telegram: '',
+    iconAddress: '',
     enableTrading: false,
     tradingStartTime: '',
     image: null
@@ -104,20 +106,7 @@ export function TokenForm({ onSubmit, isLoading = false }: TokenFormProps) {
       newErrors.symbol = '代币符号不能超过10个字符';
     }
     
-    // 验证网站链接格式（可选）
-    if (formData.website && !formData.website.match(/^https?:\/\/.+/)) {
-      newErrors.website = '请输入有效的网站链接（以http://或https://开头）';
-    }
-    
-    // 验证Twitter链接格式（可选）
-    if (formData.twitter && !formData.twitter.match(/^https?:\/\/(www\.)?(twitter\.com|x\.com)\/.+/)) {
-      newErrors.twitter = '请输入有效的Twitter链接';
-    }
-    
-    // 验证Telegram链接格式（可选）
-    if (formData.telegram && !formData.telegram.match(/^https?:\/\/(www\.)?t\.me\/.+/)) {
-      newErrors.telegram = '请输入有效的Telegram链接';
-    }
+  
     
     // 如果启用交易，验证开始时间
     if (formData.enableTrading && !formData.tradingStartTime) {

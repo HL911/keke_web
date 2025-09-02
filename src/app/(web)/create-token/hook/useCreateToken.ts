@@ -18,6 +18,7 @@ export function useCreateToken() {
     website: '',
     twitter: '',
     telegram: '',
+    iconAddress: '',
     enableTrading: false,
     tradingStartTime: '',
     image: null,
@@ -47,20 +48,7 @@ export function useCreateToken() {
       newErrors.symbol = '代币符号不能超过10个字符';
     }
     
-    // 验证网站链接格式（可选）
-    if (tokenData.website && !tokenData.website.match(/^https?:\/\/.+/)) {
-      newErrors.website = '请输入有效的网站链接（以http://或https://开头）';
-    }
-    
-    // 验证Twitter链接格式（可选）
-    if (tokenData.twitter && !tokenData.twitter.match(/^https?:\/\/(www\.)?(twitter\.com|x\.com)\/.+/)) {
-      newErrors.twitter = '请输入有效的Twitter链接';
-    }
-    
-    // 验证Telegram链接格式（可选）
-    if (tokenData.telegram && !tokenData.telegram.match(/^https?:\/\/(www\.)?t\.me\/.+/)) {
-      newErrors.telegram = '请输入有效的Telegram链接';
-    }
+
     
     // 如果启用交易，验证开始时间
     if (tokenData.enableTrading && !tokenData.tradingStartTime) {
@@ -170,6 +158,11 @@ export function useCreateToken() {
               decimals: 18, // 默认18位小数
               total_supply: '1000000000000000000000000', // 默认1M代币，18位小数
               logo_uri: imageUrl,
+              description: tokenData.description,
+              iconAddress: tokenData.iconAddress,
+              twitterAddress: tokenData.twitter,
+              telegramAddress: tokenData.telegram,
+              websiteAddress: tokenData.website,
               is_verified: false
             })
           });
@@ -194,6 +187,7 @@ export function useCreateToken() {
           website: '',
           twitter: '',
           telegram: '',
+          iconAddress: '',
           enableTrading: false,
           tradingStartTime: '',
           image: null,
