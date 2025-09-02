@@ -39,32 +39,7 @@ const TABLE_SCHEMAS = {
       price_usd REAL DEFAULT 0,
       market_cap REAL DEFAULT 0,
       volume_24h REAL DEFAULT 0,
-      description TEXT,
       logo_uri TEXT,
-      twitterAddress TEXT,
-      telegramAddress TEXT,
-      websiteAddress TEXT,
-      is_verified BOOLEAN DEFAULT 0,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `,
-    meme_tokens: `
-    CREATE TABLE IF NOT EXISTS meme_tokens (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      address TEXT UNIQUE NOT NULL,
-      symbol TEXT NOT NULL,
-      name TEXT NOT NULL,
-      decimals INTEGER NOT NULL DEFAULT 18,
-      total_supply TEXT NOT NULL DEFAULT '0',
-      price_usd REAL DEFAULT 0,
-      market_cap REAL DEFAULT 0,
-      volume_24h REAL DEFAULT 0,
-      description TEXT,
-      logo_uri TEXT,
-      twitterAddress TEXT,
-      telegramAddress TEXT,
-      websiteAddress TEXT,
       is_verified BOOLEAN DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -176,10 +151,49 @@ export async function initializeDatabase(): Promise<void> {
       await createAllTables();
       console.log("Database initialized with all tables created");
     } else {
+      // 数据库存在，检查是否需要创建表和插入初始数据
+      await ensureTablesAndData();
       console.log("Database connected successfully");
     }
+    
+    console.log("✅ Database initialized successfully and healthy");
   } catch (error) {
     console.error("Failed to initialize database:", error);
+    throw error;
+  }
+}
+
+/**
+ * 确保表和数据存在
+ */
+async function ensureTablesAndData(): Promise<void> {
+  if (!db) throw new Error("Database not initialized");
+
+  try {
+    // 创建所有表（如果不存在）
+    for (const [tableName, schema] of Object.entries(TABLE_SCHEMAS)) {
+      await db.exec(schema);
+    }
+
+    // 创建所有索引（如果不存在）
+    for (const index of INDEXES) {
+      await db.exec(index);
+    }
+
+    // 检查是否需要插入初始数据
+    const tokenCount = await db.get("SELECT COUNT(*) as count FROM tokens");
+    if ((tokenCount as any)?.count === 0) {
+      await insertInitialTokens();
+      console.log("Initial token data inserted successfully");
+    }
+
+    const pairCount = await db.get("SELECT COUNT(*) as count FROM trading_pairs");
+    if ((pairCount as any)?.count === 0) {
+      await insertInitialLiquidity();
+      console.log("Initial liquidity data inserted successfully");
+    }
+  } catch (error) {
+    console.error("Failed to ensure tables and data:", error);
     throw error;
   }
 }
@@ -204,12 +218,22 @@ async function createAllTables(): Promise<void> {
     console.log("All indexes created successfully");
 
     // 插入初始代币数据
-    await insertInitialTokens();
-    console.log("Initial token data inserted successfully");
+    try {
+      await insertInitialTokens();
+      console.log("Initial token data inserted successfully");
+    } catch (error) {
+      console.error("Failed to insert initial tokens:", error);
+      throw error;
+    }
 
     // 插入初始流动性数据
-    await insertInitialLiquidity();
-    console.log("Initial liquidity data inserted successfully");
+    try {
+      await insertInitialLiquidity();
+      console.log("Initial liquidity data inserted successfully");
+    } catch (error) {
+      console.error("Failed to insert initial liquidity:", error);
+      throw error;
+    }
   } catch (error) {
     console.error("Failed to create tables:", error);
     throw error;
@@ -230,7 +254,7 @@ async function insertInitialTokens(): Promise<void> {
         name: "Keke Token",
         decimals: 18,
         is_verified: true,
-        logo_uri: "/token-logos/keke-logo.png",
+        logo_uri: "/public/keke-logo.png",
       },
       {
         address: "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
@@ -238,7 +262,7 @@ async function insertInitialTokens(): Promise<void> {
         name: "Wrapped Ether",
         decimals: 18,
         is_verified: true,
-        logo_uri: "/token-logos/weth-logo.png",
+        logo_uri: "/public/weth-logo.png",
       },
       {
         address: "0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6",
@@ -246,7 +270,7 @@ async function insertInitialTokens(): Promise<void> {
         name: "Tether USD",
         decimals: 6,
         is_verified: true,
-        logo_uri: "/token-logos/usdt-logo.png",
+        logo_uri: "/public/usdt-logo.png",
       },
       {
         address: "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318",
@@ -254,7 +278,7 @@ async function insertInitialTokens(): Promise<void> {
         name: "USD Coin",
         decimals: 6,
         is_verified: true,
-        logo_uri: "/token-logos/usdc-logo.png",
+        logo_uri: "/public/usdc-logo.png",
       },
       {
         address: "0x610178dA211FEF7D417bC0e6FeD39F05609AD788",
@@ -262,7 +286,7 @@ async function insertInitialTokens(): Promise<void> {
         name: "Wrapped BNB",
         decimals: 18,
         is_verified: true,
-        logo_uri: "/token-logos/wbnb-logo.png",
+        logo_uri: "/public/wbnb-logo.png",
       },
       {
         address: "0xB7f8BC63BbcaD18155201308C8f3540b07f84F5e",
@@ -270,7 +294,7 @@ async function insertInitialTokens(): Promise<void> {
         name: "Wrapped BTC",
         decimals: 8,
         is_verified: true,
-        logo_uri: "/token-logos/wbtc-logo.png",
+        logo_uri: "/public/wbtc-logo.png",
       },
     ];
 
@@ -542,11 +566,7 @@ export interface Token {
   price_usd: number;
   market_cap: number;
   volume_24h: number;
-  description?: string;
   logo_uri?: string;
-  twitterAddress?: string;
-  telegramAddress?: string;
-  websiteAddress?: string;
   is_verified: boolean;
   created_at: string;
   updated_at: string;
