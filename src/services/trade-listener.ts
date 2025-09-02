@@ -1,6 +1,6 @@
 import { createPublicClient, http, webSocket } from 'viem'
 import { sepolia, foundry } from 'viem/chains'
-import { getDatabase } from '../app/api/utils/sqlite-db'
+import { getDatabase} from "../app/api/utils/db-core"
 import poolAbi from '../abi/Pool.json'
 
 // 网络配置映射

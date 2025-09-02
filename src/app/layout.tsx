@@ -3,11 +3,9 @@ import "../style/globals.css";
 import ShadcnProvider from "@/components/ShadcnProvider";
 import { Navigation } from "@/components/Navigation";
 import AppkitProvider from "@/components/AppkitProvider";
-<<<<<<< HEAD
 import "../lib/startup";
-=======
 import "@/lib/database-init";
->>>>>>> origin/master
+
 
 export const metadata: Metadata = {
   title: "KekeSwap",
