@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  getAllTokenConfigs,
-  getTokenConfig,
-} from "../../../services/contract-service";
+import { getAllTokens, getTokenBySymbol } from "@/app/api/utils/token-queries";
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,7 +8,7 @@ export async function GET(request: NextRequest) {
 
     if (symbol) {
       // 获取单个代币配置
-      const tokenConfig = await getTokenConfig(symbol);
+      const tokenConfig = await getTokenBySymbol(symbol);
       if (!tokenConfig) {
         return NextResponse.json(
           { error: `代币 ${symbol} 不存在` },
@@ -21,8 +18,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: true, data: tokenConfig });
     } else {
       // 获取所有代币配置
-      const allConfigs = await getAllTokenConfigs();
-      return NextResponse.json({ success: true, data: allConfigs });
+      const allTokens = await getAllTokens();
+      const tokensMap: Record<string, (typeof allTokens)[0]> = {};
+      allTokens.forEach((token) => {
+        tokensMap[token.symbol] = token;
+      });
+      return NextResponse.json({ success: true, data: tokensMap });
     }
   } catch (error) {
     console.error("获取合约配置失败:", error);
