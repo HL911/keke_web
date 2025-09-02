@@ -92,7 +92,7 @@ const TABLE_SCHEMAS = {
       FOREIGN KEY (pair_address) REFERENCES trading_pairs(pair_address)
     )
   `,
-  trades: `
+  trade_events: `
     CREATE TABLE IF NOT EXISTS trade_events (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       network TEXT NOT NULL,
@@ -107,6 +107,22 @@ const TABLE_SCHEMAS = {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `,
+  klines: `
+    CREATE TABLE IF NOT EXISTS klines (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      network TEXT NOT NULL,
+      pair_address TEXT NOT NULL,
+      interval_type TEXT NOT NULL,
+      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+      open TEXT NOT NULL DEFAULT '0',
+      high TEXT NOT NULL DEFAULT '0',
+      low TEXT NOT NULL DEFAULT '0',
+      close TEXT NOT NULL DEFAULT '0',
+      volume TEXT NOT NULL DEFAULT '0',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(network, pair_address, interval_type, timestamp)
+    )
+  `
 };
 
 // 创建索引
@@ -126,6 +142,15 @@ const INDEXES = [
   "CREATE INDEX IF NOT EXISTS idx_user_positions_pair ON user_positions(pair_address)",
   "CREATE INDEX IF NOT EXISTS idx_price_history_pair ON price_history(pair_address)",
   "CREATE INDEX IF NOT EXISTS idx_price_history_timestamp ON price_history(timestamp)",
+  "CREATE INDEX IF NOT EXISTS idx_trade_events_network ON trade_events(network)",
+  "CREATE INDEX IF NOT EXISTS idx_trade_events_tx_hash ON trade_events(tx_hash)",
+  "CREATE INDEX IF NOT EXISTS idx_trade_events_user ON trade_events(user_address)",
+  "CREATE INDEX IF NOT EXISTS idx_trade_events_token ON trade_events(token_address)",
+  "CREATE INDEX IF NOT EXISTS idx_trade_events_timestamp ON trade_events(timestamp)",
+  "CREATE INDEX IF NOT EXISTS idx_klines_network_pair ON klines(network, pair_address)",
+  "CREATE INDEX IF NOT EXISTS idx_klines_interval ON klines(interval_type)",
+  "CREATE INDEX IF NOT EXISTS idx_klines_timestamp ON klines(timestamp)",
+  "CREATE INDEX IF NOT EXISTS idx_klines_network_pair_interval ON klines(network, pair_address, interval_type)",
 ];
 
 /**
