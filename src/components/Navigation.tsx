@@ -42,7 +42,7 @@ export function Navigation() {
     },
     {
       title: "流动性",
-      href: "/liquidity",
+      href: "/pool",
       icon: <Layers className="w-4 h-4" />,
     },
     {

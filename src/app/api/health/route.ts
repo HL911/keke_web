@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
+import { healthCheck } from "@/app/api/utils/db-core";
 import {
-  healthCheck,
   getActivePairsCount,
   getTotalTVL,
   getTotalVolume24h,
-} from "../utils/sqlite-db";
+} from "@/app/api/utils/stats-queries";
 
 /**
  * GET /api/health - 数据库健康检查
