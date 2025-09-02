@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Token } from "../app/api/utils/sqlite-db";
+import { Token } from "../app/api/utils/db-core";
 
 interface TokenConfigHook {
   tokenConfig: Token | null;

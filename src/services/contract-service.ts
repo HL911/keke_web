@@ -1,8 +1,8 @@
 import {
   getTokenByAddress,
   getAllTokens,
-  Token,
-} from "../app/api/utils/sqlite-db";
+} from "../app/api/utils/token-queries";
+import { Token } from "@/app/api/utils/db-core";
 
 // 合约类型定义
 export interface ContractConfig {
