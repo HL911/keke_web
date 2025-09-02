@@ -40,6 +40,8 @@ const TABLE_SCHEMAS = {
       market_cap REAL DEFAULT 0,
       volume_24h REAL DEFAULT 0,
       logo_uri TEXT,
+      icon_url TEXT,
+      description TEXT,
       is_verified BOOLEAN DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -98,11 +100,12 @@ const TABLE_SCHEMAS = {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       network TEXT NOT NULL,
       tx_hash TEXT NOT NULL,
-      block_number INTEGER NOT NULL,
       user_address TEXT NOT NULL,
       token_amount TEXT NOT NULL DEFAULT '0',
       eth_amount TEXT NOT NULL DEFAULT '0',
       token_address TEXT,
+      isBuy BOOLEAN DEFAULT 1,
+      price TEXT NOT NULL DEFAULT '0',
       timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )

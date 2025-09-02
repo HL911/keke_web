@@ -1,3 +1,5 @@
+'use client'
+
 import { useChainId } from "wagmi";
 import { sepolia, foundry } from "viem/chains";
 import { useTokenConfig } from "./useTokenConfig";

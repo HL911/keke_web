@@ -1,3 +1,5 @@
+'use client'
+
 import { useState, useEffect } from "react";
 import { Token } from "../app/api/utils/sqlite-db";
 

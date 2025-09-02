@@ -1,7 +1,6 @@
 import { createPublicClient, http, webSocket } from 'viem'
 import { sepolia, foundry } from 'viem/chains'
 import { getDatabase } from '../app/api/utils/sqlite-db'
-import { getAllNetworkPoolAddresses } from '../hooks/useContract'
 import poolAbi from '../abi/Pool.json'
 
 // 网络配置映射
@@ -13,12 +12,12 @@ const NETWORK_CONFIG: Record<number, {
   [sepolia.id]: {
     chain: sepolia,
     wsUrls: [
-      process.env.RPC_URL_SEPOLIA_WEBSOCKETS_1,
-      process.env.RPC_URL_SEPOLIA_WEBSOCKETS_2
+      process.env.NEXT_PUBLIC_RPC_URL_SEPOLIA_WEBSOCKETS_1,
+      process.env.NEXT_PUBLIC_RPC_URL_SEPOLIA_WEBSOCKETS_2
     ].filter(Boolean) as string[],
     httpUrls: [
-      process.env.RPC_URL_SEPOLIA_HTTPS_1,
-      process.env.RPC_URL_SEPOLIA_HTTPS_2
+      process.env.NEXT_PUBLIC_RPC_URL_SEPOLIA_HTTPS_1,
+      process.env.NEXT_PUBLIC_RPC_URL_SEPOLIA_HTTPS_2
     ].filter(Boolean) as string[]
   }
 }
@@ -66,16 +65,21 @@ const createClient = async (chainId: number) => {
   throw new Error(`Failed to create client for chain ${chainId}: no working RPC URLs`)
 }
 
+// 服务端网络配置 - 避免调用客户端hook
+const SERVER_NETWORK_CONTRACTS: Record<number, { poolAddress: string }> = {
+  [sepolia.id]: {
+    poolAddress: '0x742d35Cc6634C0532925a3b8D4C9db96c3C4b1b1'
+  }
+}
+
 // 获取指定链的Pool合约地址
 const getPoolAddress = (chainId: number): string | null => {
-  const networkAddresses = getAllNetworkPoolAddresses()
-  const network = networkAddresses.find(n => n.chainId === chainId)
-  return network?.address || null
+  return SERVER_NETWORK_CONTRACTS[chainId]?.poolAddress || null
 }
 
 // 获取所有支持的链ID
 const getSupportedChains = (): number[] => {
-  return getAllNetworkPoolAddresses().map(n => n.chainId)
+  return Object.keys(SERVER_NETWORK_CONTRACTS).map(Number)
 }
 
 // 保存Trade事件到数据库
@@ -84,17 +88,19 @@ async function saveTradeEvent(event: any) {
     const db = await getDatabase()
     await db.run(`
       INSERT INTO trade_events (
-        tx_hash, block_number, user_address, 
-        token_amount, eth_amount, token_address, timestamp
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        network, tx_hash, user_address, 
+        token_amount, eth_amount, token_address, timestamp, isBuy, price
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
+      event.chainId.toString(),
       event.transactionHash,
-      Number(event.blockNumber),
       event.args.user,
       event.args.tokenAmount.toString(),
       event.args.ethAmount.toString(),
       event.args.mint,
-      new Date().toISOString()
+      new Date().toISOString(),
+      event.args.isBuy ? 1 : 0,
+      (Number(event.args.tokenAmount) / Number(event.args.ethAmount)).toString(),
     ])
     
     console.log(`Trade event saved for chain ${event.chainId}:`, event.transactionHash)
