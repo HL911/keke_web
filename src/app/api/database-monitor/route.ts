@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDatabase } from "../utils/sqlite-db";
+import { getDatabase } from "../utils/db-core";
 
 /**
  * GET /api/database-monitor - 获取数据库监控数据

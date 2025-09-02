@@ -442,13 +442,13 @@ export default function DatabaseMonitor() {
               </div>
 
               {renderTable(
-                data.data.trading_pairs.slice(0, 5),
-                "最新交易对 (前5条)"
+                data.data.trading_pairs.slice(0, 10),
+                "最新交易对 (前10条)"
               )}
-              {renderTable(data.data.tokens.slice(0, 5), "最新代币 (前5条)")}
+              {renderTable(data.data.tokens.slice(0, 10), "最新代币 (前10条)")}
               {renderTable(
-                data.data.transactions.slice(0, 5),
-                "最新交易记录 (前5条)"
+                data.data.transactions.slice(0, 10),
+                "最新交易记录 (前10条)"
               )}
             </div>
           )}
