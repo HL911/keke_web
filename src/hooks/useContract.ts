@@ -1,8 +1,10 @@
 import { useChainId } from "wagmi";
 import { sepolia, foundry } from "viem/chains";
-import { useTokenConfig } from "./useTokenConfig";
 import FOUNDRY_ADDRESS from "@/config/address/foundry.json";
 import SEPOLIA_ADDRESS from "@/config/address/sepolia.json";
+
+// 导出类型
+export type { NetworkContracts };
 
 // 网络合约地址配置
 interface NetworkContracts {
@@ -25,18 +27,20 @@ const NETWORK_CONTRACTS: Record<number, NetworkContracts> = {
  */
 export function useContract(): NetworkContracts | null {
   const chainId = useChainId();
-  
+
   if (!chainId || !(chainId in NETWORK_CONTRACTS)) {
     return null;
   }
-  
+
   return NETWORK_CONTRACTS[chainId];
 }
 
 /**
  * 获取特定合约地址的 Hook
  */
-export function useContractAddress(contractName: keyof NetworkContracts): string | null {
+export function useContractAddress(
+  contractName: keyof NetworkContracts
+): string | null {
   const contracts = useContract();
   return contracts ? contracts[contractName] : null;
 }
@@ -68,15 +72,3 @@ export function useKekeswapRouterAddress(): string | null {
 export function useKekeswapFactoryAddress(): string | null {
   return useContractAddress("kekeswapFactoryAddress");
 }
-
-/**
- * 获取 Token 合约地址 - 从数据库查询
- * @param symbol 代币符号
- */
-export function useTokenAddress(symbol?: string): string | null {
-  const { tokenConfig } = useTokenConfig(symbol);
-  return tokenConfig?.address || null;
-}
-
-// 导出类型
-export type { NetworkContracts };

@@ -1,7 +1,11 @@
-import { useState } from 'react';
-import { useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
-import { parseEther } from 'viem';
-import TokenFactoryABI from '../abi/TokenFactory.json';
+import { useState } from "react";
+import {
+  useWriteContract,
+  useWaitForTransactionReceipt,
+  useReadContract,
+} from "wagmi";
+import { parseEther } from "viem";
+import TokenFactoryABI from "../../abi/TokenFactory.json";
 
 interface CreateTokenParams {
   name: string;
@@ -17,7 +21,10 @@ interface UseTokenFactoryReturn {
   // 创建代币（不购买）
   createToken: (params: CreateTokenParams) => Promise<void>;
   // 创建代币并购买
-  createTokenAndBuy: (params: CreateTokenParams, ethAmount: string) => Promise<void>;
+  createTokenAndBuy: (
+    params: CreateTokenParams,
+    ethAmount: string
+  ) => Promise<void>;
   // 获取当前代币索引
   currentTokenIndex: bigint | undefined;
   // 获取所有代币
@@ -29,7 +36,9 @@ interface UseTokenFactoryReturn {
   txHash: string | undefined;
 }
 
-export function useTokenFactory(contractAddress: `0x${string}`): UseTokenFactoryReturn {
+export function useTokenFactory(
+  contractAddress: `0x${string}`
+): UseTokenFactoryReturn {
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,14 +54,14 @@ export function useTokenFactory(contractAddress: `0x${string}`): UseTokenFactory
   const { data: currentTokenIndex } = useReadContract({
     address: contractAddress,
     abi: TokenFactoryABI,
-    functionName: 'currentTokenIndex',
+    functionName: "currentTokenIndex",
   });
 
   // 读取所有代币
   const { data: tokens } = useReadContract({
     address: contractAddress,
     abi: TokenFactoryABI,
-    functionName: 'getTokens',
+    functionName: "getTokens",
   });
 
   // 创建代币（不购买）
@@ -64,7 +73,7 @@ export function useTokenFactory(contractAddress: `0x${string}`): UseTokenFactory
       await writeContract({
         address: contractAddress,
         abi: TokenFactoryABI,
-        functionName: 'createBump',
+        functionName: "createBump",
         args: [
           params.name,
           params.symbol,
@@ -76,15 +85,18 @@ export function useTokenFactory(contractAddress: `0x${string}`): UseTokenFactory
         ],
       });
     } catch (err: any) {
-      setError(err.message || '创建代币失败');
-      console.error('创建代币失败:', err);
+      setError(err.message || "创建代币失败");
+      console.error("创建代币失败:", err);
     } finally {
       setIsCreating(false);
     }
   };
 
   // 创建代币并购买
-  const createTokenAndBuy = async (params: CreateTokenParams, ethAmount: string) => {
+  const createTokenAndBuy = async (
+    params: CreateTokenParams,
+    ethAmount: string
+  ) => {
     try {
       setIsCreating(true);
       setError(null);
@@ -92,7 +104,7 @@ export function useTokenFactory(contractAddress: `0x${string}`): UseTokenFactory
       await writeContract({
         address: contractAddress,
         abi: TokenFactoryABI,
-        functionName: 'createBumpAndBuy',
+        functionName: "createBumpAndBuy",
         args: [
           params.name,
           params.symbol,
@@ -105,8 +117,8 @@ export function useTokenFactory(contractAddress: `0x${string}`): UseTokenFactory
         value: parseEther(ethAmount),
       });
     } catch (err: any) {
-      setError(err.message || '创建代币并购买失败');
-      console.error('创建代币并购买失败:', err);
+      setError(err.message || "创建代币并购买失败");
+      console.error("创建代币并购买失败:", err);
     } finally {
       setIsCreating(false);
     }
