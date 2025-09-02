@@ -1,8 +1,8 @@
 import { useChainId } from "wagmi";
 import { sepolia, foundry } from "viem/chains";
 import { useTokenConfig } from "./useTokenConfig";
-
-
+import FOUNDRY_ADDRESS from "@/config/address/foundry.json";
+import SEPOLIA_ADDRESS from "@/config/address/sepolia.json";
 
 // 网络合约地址配置
 interface NetworkContracts {
@@ -15,19 +15,9 @@ interface NetworkContracts {
 // 不同网络的合约地址配置
 const NETWORK_CONTRACTS: Record<number, NetworkContracts> = {
   // Foundry 本地网络
-  [foundry.id]: {
-    tokenFactoryAddress: "0x5FbDB2315678afecb367f032d93F642f64180aa3",
-    poolAddress: "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
-    kekeswapRouterAddress: "0x0000000000000000000000000000000000000000",
-    kekeswapFactoryAddress: "0x0000000000000000000000000000000000000000",
-  },
+  [foundry.id]: FOUNDRY_ADDRESS,
   // Sepolia 测试网络
-  [sepolia.id]: {
-    tokenFactoryAddress: "0x126DA8A2083B7b16358897aaCcf419A63BBBB24E", // 需要替换为实际部署地址
-    poolAddress: "0xf7Eaf5FA85D8dbac581B2594D931558DA969102c", // 需要替换为实际部署地址
-    kekeswapRouterAddress: "0x0000000000000000000000000000000000000000", // 需要替换为实际部署地址
-    kekeswapFactoryAddress: "0x0000000000000000000000000000000000000000", // 需要替换为实际部署地址
-  },
+  [sepolia.id]: SEPOLIA_ADDRESS,
 };
 
 /**
