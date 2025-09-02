@@ -312,7 +312,7 @@ async function insertInitialLiquidity(): Promise<void> {
       },
       {
         // WETH + USDC 交易对
-        pair_address: "0x6a46c44b4570260d2c97aacd0971141ec978563f", // 需要实际计算
+        pair_address: "0x90cf8b9a78ea5f67131a94e692c2893805814216", // 需要实际计算
         token0_address: "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512", // WETH
         token1_address: "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318", // USDC
         reserve0: (5 * 10 ** 18).toString(), // 5 WETH
