@@ -205,7 +205,7 @@ async function insertInitialTokens(): Promise<void> {
         name: "Keke Token",
         decimals: 18,
         is_verified: true,
-        logo_uri: "/public/keke-logo.png",
+        logo_uri: "/token-logos/keke-logo.png",
       },
       {
         address: "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
@@ -213,7 +213,7 @@ async function insertInitialTokens(): Promise<void> {
         name: "Wrapped Ether",
         decimals: 18,
         is_verified: true,
-        logo_uri: "/public/weth-logo.png",
+        logo_uri: "/token-logos/weth-logo.png",
       },
       {
         address: "0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6",
@@ -221,7 +221,7 @@ async function insertInitialTokens(): Promise<void> {
         name: "Tether USD",
         decimals: 6,
         is_verified: true,
-        logo_uri: "/public/usdt-logo.png",
+        logo_uri: "/token-logos/usdt-logo.png",
       },
       {
         address: "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318",
@@ -229,7 +229,7 @@ async function insertInitialTokens(): Promise<void> {
         name: "USD Coin",
         decimals: 6,
         is_verified: true,
-        logo_uri: "/public/usdc-logo.png",
+        logo_uri: "/token-logos/usdc-logo.png",
       },
       {
         address: "0x610178dA211FEF7D417bC0e6FeD39F05609AD788",
@@ -237,7 +237,7 @@ async function insertInitialTokens(): Promise<void> {
         name: "Wrapped BNB",
         decimals: 18,
         is_verified: true,
-        logo_uri: "/public/wbnb-logo.png",
+        logo_uri: "/token-logos/wbnb-logo.png",
       },
       {
         address: "0xB7f8BC63BbcaD18155201308C8f3540b07f84F5e",
@@ -245,7 +245,7 @@ async function insertInitialTokens(): Promise<void> {
         name: "Wrapped BTC",
         decimals: 8,
         is_verified: true,
-        logo_uri: "/public/wbtc-logo.png",
+        logo_uri: "/token-logos/wbtc-logo.png",
       },
     ];
 
