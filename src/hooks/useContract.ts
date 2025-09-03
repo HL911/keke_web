@@ -2,9 +2,11 @@
 
 import { useChainId } from "wagmi";
 import { sepolia, foundry } from "viem/chains";
-import { useTokenConfig } from "./useTokenConfig";
 import FOUNDRY_ADDRESS from "@/config/address/foundry.json";
 import SEPOLIA_ADDRESS from "@/config/address/sepolia.json";
+
+// 导出类型
+export type { NetworkContracts };
 
 // 网络合约地址配置
 interface NetworkContracts {
@@ -27,18 +29,20 @@ const NETWORK_CONTRACTS: Record<number, NetworkContracts> = {
  */
 export function useContract(): NetworkContracts | null {
   const chainId = useChainId();
-  
+
   if (!chainId || !(chainId in NETWORK_CONTRACTS)) {
     return null;
   }
-  
+
   return NETWORK_CONTRACTS[chainId];
 }
 
 /**
  * 获取特定合约地址的 Hook
  */
-export function useContractAddress(contractName: keyof NetworkContracts): string | null {
+export function useContractAddress(
+  contractName: keyof NetworkContracts
+): string | null {
   const contracts = useContract();
   return contracts ? contracts[contractName] : null;
 }
@@ -70,48 +74,3 @@ export function useKekeswapRouterAddress(): string | null {
 export function useKekeswapFactoryAddress(): string | null {
   return useContractAddress("kekeswapFactoryAddress");
 }
-
-/**
- * 获取 Token 合约地址 - 从数据库查询
- * @param symbol 代币符号
- */
-export function useTokenAddress(symbol?: string): string | null {
-  const { tokenConfig } = useTokenConfig(symbol);
-  return tokenConfig?.address || null;
-}
-
-/**
- * 获取所有支持网络的Pool合约地址
- * @returns 包含网络名称和合约地址的数组
- */
-export function getAllNetworkPoolAddresses(): Array<{network: string, address: string, chainId: number}> {
-  return getAllNetworkContractAddresses('poolAddress');
-}
-
-/**
- * 获取所有支持网络的合约地址
- * @param contractName 合约名称
- * @returns 包含网络名称、合约地址和链ID的数组
- */
-export function getAllNetworkContractAddresses(contractName: keyof NetworkContracts): Array<{network: string, address: string, chainId: number}> {
-  return Object.entries(NETWORK_CONTRACTS).map(([chainId, contracts]) => {
-    const id = parseInt(chainId);
-    const networkName = id === foundry.id ? 'foundry' : id === sepolia.id ? 'sepolia' : `chain-${id}`;
-    return {
-      network: networkName,
-      address: contracts[contractName],
-      chainId: id
-    };
-  });
-}
-
-/**
- * 获取所有支持的链ID
- * @returns 支持的链ID数组
- */
-export function getSupportedChainIds(): number[] {
-  return Object.keys(NETWORK_CONTRACTS).map(chainId => parseInt(chainId));
-}
-
-// 导出类型
-export type { NetworkContracts };

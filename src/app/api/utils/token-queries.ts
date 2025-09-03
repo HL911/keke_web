@@ -53,21 +53,122 @@ export async function searchTokens(query: string): Promise<Token[]> {
   )) as Token[];
 }
 
+export interface CreateTokenData {
+  address: string;
+  symbol: string;
+  name: string;
+  decimals?: number;
+  total_supply?: string;
+  price_usd?: number;
+  market_cap?: number;
+  volume_24h?: number;
+  description?: string;
+  logo_uri?: string;
+  twitterAddress?: string;
+  telegramAddress?: string;
+  websiteAddress?: string;
+  is_verified?: boolean;
+}
+
+/**
+ * 插入新的代币
+ */
+export async function insertToken(tokenData: CreateTokenData): Promise<void> {
+  const {
+    address,
+    symbol,
+    name,
+    decimals = 18,
+    total_supply = '0',
+    price_usd = 0,
+    market_cap = 0,
+    volume_24h = 0,
+    description,
+    logo_uri,
+    twitterAddress,
+    telegramAddress,
+    websiteAddress,
+    is_verified = false
+  } = tokenData;
+
+  await executeUpdate(
+    `
+    INSERT INTO tokens (
+      address, symbol, name, decimals, total_supply, price_usd, 
+      market_cap, volume_24h, description, logo_uri, 
+      twitterAddress, telegramAddress, websiteAddress, is_verified, 
+      created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'), datetime('now', 'localtime'))
+    `,
+    [
+      address,
+      symbol,
+      name,
+      decimals,
+      total_supply,
+      price_usd,
+      market_cap,
+      volume_24h,
+      description,
+      logo_uri,
+      twitterAddress,
+      telegramAddress,
+      websiteAddress,
+      is_verified ? 1 : 0
+    ]
+  );
+}
+
 /**
  * 创建或更新代币信息
  */
-export async function upsertToken(
-  address: string,
-  symbol: string,
-  name: string,
-  decimals: number = 18
-): Promise<void> {
+export async function upsertToken(tokenData: CreateTokenData): Promise<void> {
+  const {
+    address,
+    symbol,
+    name,
+    decimals = 18,
+    total_supply = '0',
+    price_usd = 0,
+    market_cap = 0,
+    volume_24h = 0,
+    description,
+    logo_uri,
+    twitterAddress,
+    telegramAddress,
+    websiteAddress,
+    is_verified = false
+  } = tokenData;
+
   await executeUpdate(
     `
-    INSERT OR REPLACE INTO tokens (address, symbol, name, decimals, updated_at)
-    VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+    INSERT OR REPLACE INTO tokens (
+      address, symbol, name, decimals, total_supply, price_usd, 
+      market_cap, volume_24h, description, logo_uri, 
+      twitterAddress, telegramAddress, websiteAddress, is_verified, 
+      created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 
+      COALESCE((SELECT created_at FROM tokens WHERE address = ?), datetime('now', 'localtime')),
+      datetime('now', 'localtime')
+    )
     `,
-    [address, symbol, name, decimals]
+    [
+      address,
+      symbol,
+      name,
+      decimals,
+      total_supply,
+      price_usd,
+      market_cap,
+      volume_24h,
+      description,
+      logo_uri,
+      twitterAddress,
+      telegramAddress,
+      websiteAddress,
+      is_verified ? 1 : 0,
+      address
+    ]
   );
 }
 
@@ -83,7 +184,7 @@ export async function updateTokenPrice(
   await executeUpdate(
     `
     UPDATE tokens 
-    SET price_usd = ?, market_cap = ?, volume_24h = ?, updated_at = CURRENT_TIMESTAMP
+    SET price_usd = ?, market_cap = ?, volume_24h = ?, updated_at = datetime('now', 'localtime')
     WHERE address = ?
     `,
     [priceUsd, marketCap, volume24h, address]
@@ -109,7 +210,7 @@ export async function updateTokenAddress(
   await executeUpdate(
     `
     UPDATE tokens 
-    SET address = ?, updated_at = CURRENT_TIMESTAMP
+    SET address = ?, updated_at = datetime('now', 'localtime')
     WHERE symbol = ?
     `,
     [newAddress, symbol]

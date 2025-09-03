@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { useTokenFactory } from '@/hooks/useTokenFactory';
+import { useTokenFactory, type CreateTokenResult } from '@/hooks/launchPool/useTokenFactory';
 import { useTokenFactoryAddress } from '@/hooks/useContract';
 import type { TokenFormData } from '../components/TokenForm';
 
@@ -20,6 +20,7 @@ export function useCreateToken() {
     website: '',
     twitter: '',
     telegram: '',
+    logo_uri: '',
     enableTrading: false,
     tradingStartTime: '',
     image: null,
@@ -49,20 +50,7 @@ export function useCreateToken() {
       newErrors.symbol = '代币符号不能超过10个字符';
     }
     
-    // 验证网站链接格式（可选）
-    if (tokenData.website && !tokenData.website.match(/^https?:\/\/.+/)) {
-      newErrors.website = '请输入有效的网站链接（以http://或https://开头）';
-    }
-    
-    // 验证Twitter链接格式（可选）
-    if (tokenData.twitter && !tokenData.twitter.match(/^https?:\/\/(www\.)?(twitter\.com|x\.com)\/.+/)) {
-      newErrors.twitter = '请输入有效的Twitter链接';
-    }
-    
-    // 验证Telegram链接格式（可选）
-    if (tokenData.telegram && !tokenData.telegram.match(/^https?:\/\/(www\.)?t\.me\/.+/)) {
-      newErrors.telegram = '请输入有效的Telegram链接';
-    }
+
     
     // 如果启用交易，验证开始时间
     if (tokenData.enableTrading && !tokenData.tradingStartTime) {
@@ -138,22 +126,58 @@ export function useCreateToken() {
         name: tokenData.name,
         symbol: tokenData.symbol,
         description: tokenData.description,
-        iconAddress: imageUrl,
+        logo_uri: imageUrl,
         twitterAddress: tokenData.twitter,
         telegramAddress: tokenData.telegram,
         websiteAddress: tokenData.website,
       };
 
+      let contractResult: CreateTokenResult | null = null;
       if (amount && parseFloat(amount) > 0) {
         // 如果有金额，调用创建并购买
-        await createTokenAndBuyContract(tokenParams, amount);
+        contractResult = await createTokenAndBuyContract(tokenParams, amount);
       } else {
         // 如果没有金额，只创建代币
-        await createTokenContract(tokenParams);
+        contractResult = await createTokenContract(tokenParams);
       }
 
-      // 如果合约调用成功，显示成功消息
-      if (isSuccess) {
+      // 如果合约调用成功，保存到数据库
+      if (contractResult && contractResult.tokenAddress) {
+        // 立即重置创建状态
+        setIsCreating(false);
+        
+        try {
+          // 保存代币信息到 meme_tokens 表
+          const response = await fetch('/api/meme-tokens', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              address: contractResult.tokenAddress,
+              symbol: tokenData.symbol,
+              name: tokenData.name,
+              decimals: 18, // 默认18位小数
+              total_supply: '1000000000000000000000000', // 默认1M代币，18位小数
+              logo_uri: imageUrl,
+              description: tokenData.description,
+              twitterAddress: tokenData.twitter,
+              telegramAddress: tokenData.telegram,
+              websiteAddress: tokenData.website,
+              is_verified: false
+            })
+          });
+
+          const result = await response.json();
+          if (!result.success) {
+            console.warn('保存代币到数据库失败:', result.error);
+            // 不阻断用户流程，只记录警告
+          }
+        } catch (dbError) {
+          console.warn('保存代币到数据库时发生错误:', dbError);
+          // 不阻断用户流程，只记录警告
+        }
+
         toast.success('代币创建成功！');
         
         // 重置表单
@@ -164,10 +188,13 @@ export function useCreateToken() {
           website: '',
           twitter: '',
           telegram: '',
+          logo_uri: '',
           enableTrading: false,
           tradingStartTime: '',
           image: null,
         });
+        
+        return; // 提前返回，避免执行 finally 块
       }
       
     } catch (error) {
@@ -181,7 +208,7 @@ export function useCreateToken() {
   return {
     formData,
     updateFormData,
-    isCreating: isCreating || isContractCreating,
+    isCreating: isCreating, // 只使用本地状态，不依赖合约状态
     createToken,
     errors,
   };
