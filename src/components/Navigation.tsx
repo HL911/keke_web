@@ -36,6 +36,11 @@ export function Navigation() {
       icon: <Home className="w-4 h-4" />,
     },
     {
+      title: "虚拟交易",
+      href: "/vm-swap",
+      icon: <Coins className="w-4 h-4" />,
+    },
+    {
       title: "交易",
       href: "/swap",
       icon: <Coins className="w-4 h-4" />,
