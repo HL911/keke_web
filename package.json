@@ -13,7 +13,8 @@
     "seed-tokens": "tsx scripts/seed-tokens.ts",
     "verify-config": "tsx scripts/verify-config.ts",
     "check-config": "tsx scripts/check-and-fix-config.ts",
-    "test:integration": "tsx scripts/integration-test.ts"
+    "test:integration": "tsx scripts/integration-test.ts",
+    "test:websocket": "tsx scripts/test-websocket.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.1",

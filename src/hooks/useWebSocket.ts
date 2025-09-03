@@ -155,13 +155,34 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
       return; // 已经连接
     }
 
+    // 检查 WebSocket 是否可用
+    if (typeof WebSocket === 'undefined') {
+      const error = new Error('WebSocket 不可用 - 可能运行在服务器端环境');
+      console.error('WebSocket 连接失败:', error.message);
+      onError?.(error);
+      return;
+    }
+
     setIsConnecting(true);
 
     try {
+      console.log(`尝试连接 WebSocket: ${url}`);
       const ws = new WebSocket(url);
 
+      // 设置连接超时
+      const connectionTimeout = setTimeout(() => {
+        if (ws.readyState === WebSocket.CONNECTING) {
+          ws.close();
+          const timeoutError = new Error(`WebSocket 连接超时: ${url}`);
+          console.error('WebSocket 连接超时:', timeoutError.message);
+          setIsConnecting(false);
+          onError?.(timeoutError);
+        }
+      }, 10000); // 10秒超时
+
       ws.onopen = () => {
-        console.log('WebSocket 连接成功');
+        clearTimeout(connectionTimeout);
+        console.log('WebSocket 连接成功:', url);
         setIsConnected(true);
         setIsConnecting(false);
         reconnectAttemptsRef.current = 0;
@@ -195,45 +216,113 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
               break;
             case 'error':
               console.error('WebSocket 服务器错误:', message.data);
-              onError?.(message.data);
+              onError?.(new Error(`服务器错误: ${JSON.stringify(message.data)}`));
               break;
             default:
               console.log('收到未知消息类型:', message.type);
           }
         } catch (error) {
-          console.error('解析 WebSocket 消息失败:', error);
+          const parseError = new Error(`解析 WebSocket 消息失败: ${error instanceof Error ? error.message : String(error)}`);
+          console.error('解析 WebSocket 消息失败:', parseError.message);
+          onError?.(parseError);
         }
       };
 
       ws.onclose = (event) => {
-        console.log('WebSocket 连接关闭:', event.code, event.reason);
+        clearTimeout(connectionTimeout);
+        
+        let closeReason = '未知原因';
+        let shouldReconnect = false;
+        
+        switch (event.code) {
+          case 1000:
+            closeReason = '正常关闭';
+            break;
+          case 1001:
+            closeReason = '页面离开';
+            break;
+          case 1002:
+            closeReason = '协议错误';
+            shouldReconnect = true;
+            break;
+          case 1003:
+            closeReason = '数据类型错误';
+            shouldReconnect = true;
+            break;
+          case 1006:
+            closeReason = '连接异常断开';
+            shouldReconnect = true;
+            break;
+          case 1011:
+            closeReason = '服务器错误';
+            shouldReconnect = true;
+            break;
+          case 1012:
+            closeReason = '服务重启';
+            shouldReconnect = true;
+            break;
+          default:
+            closeReason = `关闭代码: ${event.code}`;
+            shouldReconnect = event.code !== 1000; // 除了正常关闭，其他情况都尝试重连
+        }
+        
+        console.log(`WebSocket 连接关闭: ${closeReason} (${event.code})`, event.reason || '');
         setIsConnected(false);
         setIsConnecting(false);
         stopHeartbeat();
         
         onDisconnect?.();
         
-        // 自动重连
-        if (autoReconnect && reconnectAttemptsRef.current < maxReconnectAttempts) {
+        // 智能重连策略
+        if (autoReconnect && shouldReconnect && reconnectAttemptsRef.current < maxReconnectAttempts) {
           reconnectAttemptsRef.current++;
-          console.log(`尝试重连 (${reconnectAttemptsRef.current}/${maxReconnectAttempts})`);
+          const backoffDelay = reconnectInterval * Math.pow(1.5, reconnectAttemptsRef.current - 1); // 指数退避
+          console.log(`尝试重连 (${reconnectAttemptsRef.current}/${maxReconnectAttempts}) 延迟 ${backoffDelay}ms`);
           setTimeout(() => {
             connect();
-          }, reconnectInterval);
+          }, Math.min(backoffDelay, 30000)); // 最大延迟30秒
         }
       };
 
-      ws.onerror = (error) => {
-        console.error('WebSocket 错误:', error);
+      ws.onerror = (errorEvent) => {
+        clearTimeout(connectionTimeout);
+        
+        // WebSocket 错误事件通常不包含详细信息
+        let errorMessage = 'WebSocket 连接错误';
+        
+        // 尝试从不同属性获取错误信息
+        if (errorEvent instanceof ErrorEvent) {
+          errorMessage = errorEvent.message || errorMessage;
+        }
+        
+        // 根据连接状态提供更有用的错误信息
+        switch (ws.readyState) {
+          case WebSocket.CONNECTING:
+            errorMessage = `WebSocket 连接失败: 无法连接到 ${url}`;
+            break;
+          case WebSocket.OPEN:
+            errorMessage = `WebSocket 连接中断: ${url}`;
+            break;
+          case WebSocket.CLOSING:
+            errorMessage = `WebSocket 关闭时发生错误: ${url}`;
+            break;
+          case WebSocket.CLOSED:
+            errorMessage = `WebSocket 已关闭，无法发送数据: ${url}`;
+            break;
+        }
+        
+        const wsError = new Error(errorMessage);
+        console.error('WebSocket 错误:', wsError.message);
         setIsConnecting(false);
-        onError?.(error);
+        onError?.(wsError);
       };
 
       wsRef.current = ws;
     } catch (error) {
-      console.error('创建 WebSocket 连接失败:', error);
+      const connectionError = new Error(`创建 WebSocket 连接失败: ${error instanceof Error ? error.message : String(error)}`);
+      console.error('创建 WebSocket 连接失败:', connectionError.message);
       setIsConnecting(false);
-      onError?.(error);
+      onError?.(connectionError);
     }
   }, [url, onKlineUpdate, onConnect, onDisconnect, onError, autoReconnect, reconnectInterval, maxReconnectAttempts, startHeartbeat, stopHeartbeat, resubscribe]);
 

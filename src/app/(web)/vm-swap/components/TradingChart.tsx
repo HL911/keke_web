@@ -66,6 +66,7 @@ export default function TradingChart({
   );
   const [seriesType, setSeriesType] = useState<'candlestick' | 'line' | 'area' | 'mock'>('candlestick');
   const [wsConnected, setWsConnected] = useState(false);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
 
   // WebSocket K线数据处理
   const handleKlineUpdate = useCallback((klineData: KlineData) => {
@@ -132,6 +133,7 @@ export default function TradingChart({
     onConnect: () => {
       console.log('WebSocket 已连接');
       setWsConnected(true);
+      setConnectionError(null);
     },
     onDisconnect: () => {
       console.log('WebSocket 已断开');
@@ -139,6 +141,8 @@ export default function TradingChart({
     },
     onError: (error) => {
       console.error('WebSocket 错误:', error);
+      setConnectionError(error instanceof Error ? error.message : String(error));
+      setWsConnected(false);
     }
   });
   // 类似 lightweight-charts-react-wrapper 的 Chart 组件功能
@@ -419,15 +423,24 @@ export default function TradingChart({
               {/* WebSocket 连接状态指示 */}
               <Badge 
                 variant="outline" 
-                className={`text-xs ${
+                className={`text-xs cursor-help ${
                   wsConnected 
                     ? 'border-green-400 text-green-400' 
                     : isConnecting 
                     ? 'border-yellow-400 text-yellow-400'
                     : 'border-red-400 text-red-400'
                 }`}
+                title={
+                  connectionError 
+                    ? `连接错误: ${connectionError}` 
+                    : wsConnected 
+                    ? '实时数据连接正常' 
+                    : isConnecting 
+                    ? '正在连接 WebSocket...' 
+                    : '未连接到实时数据源'
+                }
               >
-                {wsConnected ? '实时数据' : isConnecting ? '连接中...' : externalData ? '静态数据' : '离线'}
+                {wsConnected ? '实时数据' : isConnecting ? '连接中...' : connectionError ? '连接失败' : externalData ? '静态数据' : '离线'}
               </Badge>
               <div className="flex gap-2">
                 <Button variant="ghost" size="sm" className="text-green-400 hover:text-green-300">
@@ -477,7 +490,24 @@ export default function TradingChart({
                 <div className={`text-lg ${priceChange.startsWith('+') ? 'text-green-400' : 'text-red-400'}`}>
                   {priceChange}
                 </div>
-                <div className="text-sm text-gray-400 mt-4">图表加载中...</div>
+                <div className="text-sm text-gray-400 mt-4">
+                  {connectionError ? (
+                    <div className="space-y-2">
+                      <div className="text-red-400">⚠️ 实时数据连接失败</div>
+                      <div className="text-xs max-w-md break-words">{connectionError}</div>
+                      <div className="text-xs text-blue-400 mt-2">
+                        💡 提示: 请运行 <code className="bg-gray-800 px-1 rounded">npm run test:websocket</code> 检查连接
+                      </div>
+                    </div>
+                  ) : isConnecting ? (
+                    <div>
+                      <div className="animate-pulse">🔄 连接实时数据中...</div>
+                      <div className="text-xs mt-1">正在连接 WebSocket 服务器</div>
+                    </div>
+                  ) : (
+                    <div>📊 图表加载中...</div>
+                  )}
+                </div>
               </div>
             </div>
           )}
