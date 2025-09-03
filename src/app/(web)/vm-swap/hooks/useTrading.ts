@@ -76,7 +76,6 @@ export function useTrading() {
   
   // 获取代币配置的辅助函数
   const getTokenConfigBySymbol = useCallback((symbol: string) => {
-    console.log('wethConfig', wethConfig)
     if (symbol === 'KEKE') return kekeConfig.tokenInfo;
     if (symbol === 'ETH' || symbol === 'WETH') return getETHInfo();
     // 对于其他代币，需要在组件级别预加载或者使用API

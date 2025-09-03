@@ -41,11 +41,11 @@ export default function TradingPanel({ symbol = "KEKE", currentPrice = "0.42814"
         // 先尝试通过 symbol 搜索
         const searchResponse = await fetch(`/api/meme-tokens?action=search&search=${symbol}`);
         const searchResult = await searchResponse.json();
-        
-        if (searchResult.success && searchResult.data.length > 0) {
+        if (searchResult.success && searchResult.data.tokens.length > 0) {
           // 找到匹配的 meme 代币
-          const exactMatch = searchResult.data.find((token: any) => 
-            token.symbol.toLowerCase() === symbol.toLowerCase()
+          const exactMatch = searchResult.data.tokens.find((token: any) => {
+            return token.symbol.toLowerCase() === symbol.toLowerCase()
+          }                        
           );
           
           if (exactMatch) {
