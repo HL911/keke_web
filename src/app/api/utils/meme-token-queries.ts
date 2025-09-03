@@ -65,7 +65,7 @@ export async function insertMemeToken(tokenData: CreateMemeTokenData): Promise<v
       market_cap, volume_24h, description, logo_uri, 
       twitterAddress, telegramAddress, websiteAddress, is_verified, 
       created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'), datetime('now', 'localtime'))
     `,
     [
       address,
@@ -115,8 +115,8 @@ export async function upsertMemeToken(tokenData: CreateMemeTokenData): Promise<v
       twitterAddress, telegramAddress, websiteAddress, is_verified, 
       created_at, updated_at
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 
-      COALESCE((SELECT created_at FROM meme_tokens WHERE address = ?), CURRENT_TIMESTAMP),
-      CURRENT_TIMESTAMP
+      COALESCE((SELECT created_at FROM meme_tokens WHERE address = ?), datetime('now', 'localtime')),
+      datetime('now', 'localtime')
     )
     `,
     [
@@ -229,7 +229,7 @@ export async function updateMemeTokenPrice(
   market_cap?: number,
   volume_24h?: number
 ): Promise<void> {
-  const updateFields = ['price_usd = ?', 'updated_at = CURRENT_TIMESTAMP'];
+  const updateFields = ['price_usd = ?', 'updated_at = datetime(\'now\', \'localtime\')'];
   const params: unknown[] = [price_usd];
 
   if (market_cap !== undefined) {

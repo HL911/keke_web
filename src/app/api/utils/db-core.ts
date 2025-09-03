@@ -23,8 +23,8 @@ const TABLE_SCHEMAS = {
       tvl_usd REAL DEFAULT 0,
       volume_24h TEXT DEFAULT '0',
       is_active BOOLEAN DEFAULT 1,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      created_at DATETIME DEFAULT (datetime('now', 'localtime')),
+      updated_at DATETIME DEFAULT (datetime('now', 'localtime'))
     )
   `,
 
@@ -45,8 +45,8 @@ const TABLE_SCHEMAS = {
       telegramAddress TEXT,
       websiteAddress TEXT,
       is_verified BOOLEAN DEFAULT 0,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      created_at DATETIME DEFAULT (datetime('now', 'localtime')),
+      updated_at DATETIME DEFAULT (datetime('now', 'localtime'))
     )
   `,
     meme_tokens: `
@@ -66,8 +66,8 @@ const TABLE_SCHEMAS = {
       telegramAddress TEXT,
       websiteAddress TEXT,
       is_verified BOOLEAN DEFAULT 0,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      created_at DATETIME DEFAULT (datetime('now', 'localtime')),
+      updated_at DATETIME DEFAULT (datetime('now', 'localtime'))
     )
   `,
 
@@ -88,7 +88,7 @@ const TABLE_SCHEMAS = {
       gas_used INTEGER,
       gas_price TEXT,
       status TEXT DEFAULT 'PENDING',
-      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+      timestamp DATETIME DEFAULT (datetime('now', 'localtime')),
       FOREIGN KEY (pair_address) REFERENCES trading_pairs(pair_address)
     )
   `,
@@ -101,7 +101,7 @@ const TABLE_SCHEMAS = {
       lp_balance TEXT NOT NULL DEFAULT '0',
       token0_balance TEXT NOT NULL DEFAULT '0',
       token1_balance TEXT NOT NULL DEFAULT '0',
-      last_updated DATETIME DEFAULT CURRENT_TIMESTAMP,
+      last_updated DATETIME DEFAULT (datetime('now', 'localtime')),
       UNIQUE(user_address, pair_address),
       FOREIGN KEY (pair_address) REFERENCES trading_pairs(pair_address)
     )
@@ -113,7 +113,7 @@ const TABLE_SCHEMAS = {
       pair_address TEXT NOT NULL,
       price0_cumulative TEXT NOT NULL,
       price1_cumulative TEXT NOT NULL,
-      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+      timestamp DATETIME DEFAULT (datetime('now', 'localtime')),
       FOREIGN KEY (pair_address) REFERENCES trading_pairs(pair_address)
     )
   `,
@@ -279,7 +279,7 @@ async function insertInitialTokens(): Promise<void> {
         `
         INSERT OR REPLACE INTO tokens (
           address, symbol, name, decimals, is_verified, logo_uri, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        ) VALUES (?, ?, ?, ?, ?, ?, datetime('now', 'localtime'), datetime('now', 'localtime'))
         `,
         [
           token.address,
@@ -402,7 +402,7 @@ async function insertInitialLiquidity(): Promise<void> {
           pair_address, token0_address, token1_address, total_supply, 
           reserve0, reserve1, tvl_usd, volume_24h, is_active, 
           created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'), datetime('now', 'localtime'))
         `,
         [
           pair.pair_address,
