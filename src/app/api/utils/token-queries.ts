@@ -98,7 +98,7 @@ export async function insertToken(tokenData: CreateTokenData): Promise<void> {
       market_cap, volume_24h, description, logo_uri, 
       twitterAddress, telegramAddress, websiteAddress, is_verified, 
       created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'), datetime('now', 'localtime'))
     `,
     [
       address,
@@ -148,8 +148,8 @@ export async function upsertToken(tokenData: CreateTokenData): Promise<void> {
       twitterAddress, telegramAddress, websiteAddress, is_verified, 
       created_at, updated_at
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 
-      COALESCE((SELECT created_at FROM tokens WHERE address = ?), CURRENT_TIMESTAMP),
-      CURRENT_TIMESTAMP
+      COALESCE((SELECT created_at FROM tokens WHERE address = ?), datetime('now', 'localtime')),
+      datetime('now', 'localtime')
     )
     `,
     [
@@ -184,7 +184,7 @@ export async function updateTokenPrice(
   await executeUpdate(
     `
     UPDATE tokens 
-    SET price_usd = ?, market_cap = ?, volume_24h = ?, updated_at = CURRENT_TIMESTAMP
+    SET price_usd = ?, market_cap = ?, volume_24h = ?, updated_at = datetime('now', 'localtime')
     WHERE address = ?
     `,
     [priceUsd, marketCap, volume24h, address]
@@ -210,7 +210,7 @@ export async function updateTokenAddress(
   await executeUpdate(
     `
     UPDATE tokens 
-    SET address = ?, updated_at = CURRENT_TIMESTAMP
+    SET address = ?, updated_at = datetime('now', 'localtime')
     WHERE symbol = ?
     `,
     [newAddress, symbol]

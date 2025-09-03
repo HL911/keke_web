@@ -21,7 +21,7 @@ export async function upsertUserPosition(
     `
     INSERT OR REPLACE INTO user_positions (
       user_address, pair_address, lp_balance, token0_balance, token1_balance, last_updated
-    ) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    ) VALUES (?, ?, ?, ?, ?, datetime('now', 'localtime'))
     `,
     [userAddress, pairAddress, lpBalance, token0Balance, token1Balance]
   );
@@ -145,7 +145,7 @@ export async function createOrUpdateUserPosition(
         `
         INSERT OR REPLACE INTO user_positions (
           user_address, pair_address, lp_balance, token0_balance, token1_balance, last_updated
-        ) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        ) VALUES (?, ?, ?, ?, ?, datetime('now', 'localtime'))
         `,
         [userAddress, pairAddress, lpBalance, token0Balance, token1Balance]
       );
