@@ -20,6 +20,9 @@ interface FarmContracts {
   WETH9: string;
   KEKE: string;
   WETH9_KEKE_PAIR: string;
+  KEKE_WETH_V4: string;
+  WETH: string;
+  CHAINLINK_ETH_USD: string;
   Master: string;
   SyrupBar: string;
   SmartChef: string;
@@ -141,4 +144,25 @@ export function useKekeTokenAddress(): string | null {
  */
 export function useSyrupBarAddress(): string | null {
   return useFarmContractAddress("SyrupBar");
+}
+
+/**
+ * 获取 KEKE_WETH_V4 LP代币地址
+ */
+export function useKekeWethV4Address(): string | null {
+  return useFarmContractAddress("KEKE_WETH_V4");
+}
+
+/**
+ * 获取 WETH 代币地址
+ */
+export function useWethAddress(): string | null {
+  return useFarmContractAddress("WETH");
+}
+
+/**
+ * 获取 Chainlink ETH/USD 价格预言机地址
+ */
+export function useChainlinkETHUSDAddress(): string | null {
+  return useFarmContractAddress("CHAINLINK_ETH_USD");
 }
