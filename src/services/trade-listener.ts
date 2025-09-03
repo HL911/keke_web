@@ -1,6 +1,7 @@
 import { createPublicClient, http, webSocket, formatEther } from 'viem'
 import { sepolia, foundry } from 'viem/chains'
 import { insertTradeEvent } from "../app/api/utils/trade-events-queries"
+import { processTradeForKlines } from './kline'
 import poolAbi from '../abi/Pool.json'
 import sepoliaAddresses from '../config/address/sepolia.json'
 
@@ -128,10 +129,25 @@ async function saveTradeEvent(event: any) {
       timestamp: new Date().toISOString()
     }
     
+    // 保存交易事件到数据库
     await insertTradeEvent(tradeEventData)
     console.log(`Trade event saved for chain ${event.chainId}:`, event.transactionHash)
+    
+    // 触发K线数据聚合
+    const klineTradeData = {
+      amount: tradeEventData.token_amount, 
+      price: tradeEventData.price,
+      address: tradeEventData.token_address, // 代币地址作为交易对地址
+      network: tradeEventData.network
+    }
+    
+    await processTradeForKlines(klineTradeData)
+    console.log(`K-line data processed for trade:`, event.transactionHash)
+    
+
+    
   } catch (error) {
-    console.error('Error saving trade event:', error)
+    console.error('Error saving trade event or processing K-line:', error)
   }
 }
 

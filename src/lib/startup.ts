@@ -1,4 +1,5 @@
 import { startTradeListener } from '../services/trade-listener'
+import { startKlineWebSocketServer } from '../services/websocket-server'
 
 // 应用启动时初始化事件监听
 export async function initializeApp() {
@@ -7,6 +8,10 @@ export async function initializeApp() {
     console.log('Initializing application...')
     
     try {
+      // 启动WebSocket服务器
+      await startKlineWebSocketServer()
+      console.log('K-line WebSocket server started')
+      
       // 启动Trade事件监听
       await startTradeListener()
       console.log('Application initialized successfully')
