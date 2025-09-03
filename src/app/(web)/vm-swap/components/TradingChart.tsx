@@ -58,6 +58,7 @@ export default function TradingChart({
   const [chartData, setChartData] = useState<CandlestickData[]>(() => 
     externalData || generateInitialData()
   );
+  const [seriesType, setSeriesType] = useState<'candlestick' | 'line' | 'area' | 'mock'>('candlestick');
   // 类似 lightweight-charts-react-wrapper 的 Chart 组件功能
   const createChartInstance = useCallback(() => {
     if (!chartContainerRef.current) return null;
@@ -111,6 +112,7 @@ export default function TradingChart({
   const createCandlestickSeries = useCallback((chart: any) => {
     // 处理 lightweight-charts API 兼容性问题
     let series = null;
+    let actualSeriesType: 'candlestick' | 'line' | 'area' | 'mock' = 'candlestick';
     
     try {
       // 方法1: 尝试使用 addCandlestickSeries (较新版本)
@@ -122,7 +124,8 @@ export default function TradingChart({
           wickUpColor: '#26a69a',
           wickDownColor: '#ef5350',
         });
-        console.log('使用 addCandlestickSeries 成功');
+        actualSeriesType = 'candlestick';
+        console.log('✅ 使用 addCandlestickSeries 成功');
       } else {
         throw new Error('addCandlestickSeries not available');
       }
@@ -139,6 +142,7 @@ export default function TradingChart({
             wickUpColor: '#26a69a',
             wickDownColor: '#ef5350',
           });
+          actualSeriesType = 'candlestick';
           console.log('✅ 使用 addSeries(CandlestickSeries) 成功');
         } else {
           throw new Error('addSeries not available');
@@ -152,6 +156,7 @@ export default function TradingChart({
             color: '#26a69a',
             lineWidth: 2,
           });
+          actualSeriesType = 'line';
           console.log('✅ 使用 addSeries(LineSeries) 作为后备方案');
         } catch (error3) {
           console.warn('LineSeries 也失败，尝试 AreaSeries:', error3);
@@ -164,11 +169,13 @@ export default function TradingChart({
               bottomColor: 'rgba(38, 166, 154, 0.0)',
               lineWidth: 2,
             });
+            actualSeriesType = 'area';
             console.log('✅ 使用 addSeries(AreaSeries) 作为最后后备方案');
           } catch (error4) {
             console.error('❌ 所有图表方法都失败了:', error4);
             
             // 最终模拟对象
+            actualSeriesType = 'mock';
             series = {
               setData: (data: any) => {
                 console.log('模拟 setData 调用，数据:', data?.length, '条记录');
@@ -182,7 +189,7 @@ export default function TradingChart({
       }
     }
 
-    return series;
+    return { series, type: actualSeriesType };
   }, []);
 
   // 更新价格信息 - 支持不同的数据格式
@@ -209,7 +216,13 @@ export default function TradingChart({
     const chart = createChartInstance();
     if (!chart) return;
 
-    const candlestickSeries = createCandlestickSeries(chart);
+    const seriesResult = createCandlestickSeries(chart);
+    const candlestickSeries = seriesResult.series;
+    const detectedSeriesType = seriesResult.type;
+    
+    // 更新图表类型状态
+    setSeriesType(detectedSeriesType);
+    
     if (!candlestickSeries) {
       console.warn('无法创建图表系列，将显示静态图表');
       // 不返回，继续执行，显示静态版本
@@ -218,9 +231,28 @@ export default function TradingChart({
     try {
       // 设置初始数据，模拟 wrapper 的 data prop
       if (candlestickSeries && typeof candlestickSeries.setData === 'function') {
-        candlestickSeries.setData(chartData);
+        // 根据图表类型转换数据格式
+        let dataToSet: any;
+        
+        if (detectedSeriesType === 'candlestick') {
+          // 蜡烛图使用原始数据
+          dataToSet = chartData;
+        } else if (detectedSeriesType === 'line' || detectedSeriesType === 'area') {
+          // 线条图和区域图只需要 time 和 value（使用 close 价格）
+          dataToSet = chartData.map(item => ({
+            time: item.time,
+            value: item.close,
+          }));
+        } else {
+          // mock 类型不需要实际设置数据
+          dataToSet = chartData;
+        }
+        
+        if (detectedSeriesType !== 'mock') {
+          candlestickSeries.setData(dataToSet);
+          console.log(`✅ 图表数据设置成功 (${detectedSeriesType} 格式)`);
+        }
         updatePriceInfo(chartData);
-        console.log('图表数据设置成功');
       } else {
         console.warn('series.setData 方法不可用，仅更新价格信息');
         updatePriceInfo(chartData);
@@ -278,18 +310,11 @@ export default function TradingChart({
         const newPrice = lastPrice * (1 + change);
         
         try {
-          // 根据图表类型使用不同的数据格式
+          // 根据实际的图表类型使用正确的数据格式
           let updateData: any;
           
-          // 检查是否为线条图或区域图（只需要 value）
-          const isLineSeries = !candlestickSeriesRef.current.update.toString().includes('candlestick');
-          
-          if (isLineSeries) {
-            updateData = {
-              time: lastTime,
-              value: newPrice,
-            };
-          } else {
+          if (seriesType === 'candlestick') {
+            // 蜡烛图需要 open, high, low, close
             updateData = {
               time: lastTime,
               open: lastPrice,
@@ -297,14 +322,33 @@ export default function TradingChart({
               low: Math.min(lastPrice, newPrice) * (1 - Math.random() * 0.001),
               close: newPrice,
             };
+          } else if (seriesType === 'line' || seriesType === 'area') {
+            // 线条图和区域图只需要 value
+            updateData = {
+              time: lastTime,
+              value: newPrice,
+            };
+          } else if (seriesType === 'mock') {
+            // 模拟图表，任何格式都可以
+            updateData = {
+              time: lastTime,
+              value: newPrice,
+            };
           }
 
-          if (typeof candlestickSeriesRef.current.update === 'function') {
+          if (typeof candlestickSeriesRef.current?.update === 'function' && updateData) {
             candlestickSeriesRef.current.update(updateData);
             setCurrentPrice(newPrice.toFixed(5));
             
-            // 更新内部数据状态
-            setChartData(prev => [...prev.slice(-99), updateData]);
+            // 更新内部数据状态（保持原有的蜡烛图格式用于价格计算）
+            const internalData = {
+              time: lastTime,
+              open: lastPrice,
+              high: Math.max(lastPrice, newPrice) * (1 + Math.random() * 0.001),
+              low: Math.min(lastPrice, newPrice) * (1 - Math.random() * 0.001),
+              close: newPrice,
+            };
+            setChartData(prev => [...prev.slice(-99), internalData]);
           }
         } catch (error) {
           console.error('Error updating chart:', error);
@@ -313,7 +357,7 @@ export default function TradingChart({
     }, 2000);
 
     return () => clearInterval(interval);
-  }, [currentPrice, externalData]);
+  }, [currentPrice, externalData, seriesType]);
 
   return (
     <Card className="bg-black text-white border-gray-800">
