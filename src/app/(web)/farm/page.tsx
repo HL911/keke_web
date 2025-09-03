@@ -1,174 +1,185 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { Award, TrendingUp, Users, Zap } from "lucide-react";
+'use client'
+
+import { useEffect } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
+import { useAccount } from 'wagmi'
+import { FarmPoolCard } from './components/FarmPoolCard'
+import { DebugInfo } from './components/DebugInfo'
+import { useAllFarmData, useUserFarmSummary } from './hooks/useFarmData'
 
 export default function FarmPage() {
-  const farmPools = [
-    {
-      id: 1,
-      name: "KEKE-ETH LP",
-      apy: "45.2%",
-      tvl: "$2.5M",
-      staked: "1,234",
-      rewards: "KEKE",
-      icon: "🌾",
-    },
-    {
-      id: 2,
-      name: "USDC-ETH LP",
-      apy: "32.8%",
-      tvl: "$1.8M",
-      staked: "856",
-      rewards: "KEKE",
-      icon: "🌾",
-    },
-    {
-      id: 3,
-      name: "WBTC-ETH LP",
-      apy: "28.5%",
-      tvl: "$3.2M",
-      staked: "567",
-      rewards: "KEKE",
-      icon: "🌾",
-    },
-  ];
+  const { isConnected } = useAccount()
+  const { pools, totalPools, totalTVL } = useAllFarmData()
+  const { totalStaked, totalPendingRewards, totalValue, activePools } = useUserFarmSummary()
+
+  const handleRefresh = () => {
+    // 刷新数据的逻辑可以在这里实现
+    window.location.reload()
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 pt-20">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <div className="flex justify-center mb-4">
-            <div className="w-16 h-16 bg-gradient-to-r from-orange-500 to-red-500 rounded-full flex items-center justify-center">
-              <Award className="w-8 h-8 text-white" />
-            </div>
-          </div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">农场挖矿</h1>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            质押流动性代币赚取KEKE奖励，参与DeFi生态建设
-          </p>
-        </div>
+    <div className="container mx-auto px-4 py-8 space-y-8">
+      {/* 页面标题 */}
+      <div className="text-center space-y-4">
+        <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+          KekeSwap 农场
+        </h1>
+        <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+          质押您的代币和LP代币，获得KEKE奖励。参与流动性挖矿，享受高收益回报。
+        </p>
+      </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          <Card>
-            <CardContent className="p-6 text-center">
-              <div className="flex justify-center mb-2">
-                <TrendingUp className="w-8 h-8 text-green-600" />
-              </div>
-              <p className="text-3xl font-bold text-gray-900">$7.5M</p>
-              <p className="text-sm text-gray-600">总锁定价值</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-6 text-center">
-              <div className="flex justify-center mb-2">
-                <Users className="w-8 h-8 text-blue-600" />
-              </div>
-              <p className="text-3xl font-bold text-gray-900">2,657</p>
-              <p className="text-sm text-gray-600">活跃农场用户</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-6 text-center">
-              <div className="flex justify-center mb-2">
-                <Zap className="w-8 h-8 text-yellow-600" />
-              </div>
-              <p className="text-3xl font-bold text-gray-900">35.5%</p>
-              <p className="text-sm text-gray-600">平均年化收益率</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Farm Pools */}
-        <div className="mb-12">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">农场池</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {farmPools.map((pool) => (
-              <Card key={pool.id} className="hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <span className="text-2xl">{pool.icon}</span>
-                      <div>
-                        <CardTitle className="text-lg">{pool.name}</CardTitle>
-                        <Badge variant="secondary" className="mt-1">
-                          {pool.rewards} 奖励
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">年化收益率</span>
-                      <span className="font-semibold text-green-600">
-                        {pool.apy}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">总锁定价值</span>
-                      <span className="font-semibold">{pool.tvl}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">质押用户</span>
-                      <span className="font-semibold">{pool.staked}</span>
-                    </div>
-                    <Separator />
-                    <Button className="w-full" size="sm">
-                      质押代币
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-
-        {/* How to Farm */}
-        <Card className="bg-gradient-to-r from-orange-50 to-red-50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Award className="w-5 h-5 text-orange-600" />
-              如何开始农场挖矿
-            </CardTitle>
+      {/* 总体统计 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">总矿池数</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="text-center">
-                <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <span className="text-orange-600 font-bold">1</span>
-                </div>
-                <h3 className="font-semibold mb-2">添加流动性</h3>
-                <p className="text-sm text-gray-600">
-                  在交易页面添加代币对流动性，获得LP代币
-                </p>
-              </div>
-              <div className="text-center">
-                <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <span className="text-orange-600 font-bold">2</span>
-                </div>
-                <h3 className="font-semibold mb-2">质押LP代币</h3>
-                <p className="text-sm text-gray-600">
-                  将LP代币质押到农场池中开始赚取奖励
-                </p>
-              </div>
-              <div className="text-center">
-                <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <span className="text-orange-600 font-bold">3</span>
-                </div>
-                <h3 className="font-semibold mb-2">收获奖励</h3>
-                <p className="text-sm text-gray-600">
-                  定期收获KEKE代币奖励，或复投增加收益
-                </p>
-              </div>
-            </div>
+            <div className="text-2xl font-bold">{totalPools}</div>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">总锁定价值</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">${totalTVL.toLocaleString()}</div>
+          </CardContent>
+        </Card>
+
+        {isConnected && (
+          <>
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-muted-foreground">我的质押</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{totalStaked.toFixed(4)}</div>
+                <div className="text-sm text-muted-foreground">活跃矿池: {activePools}</div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-muted-foreground">待领取奖励</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600">{totalPendingRewards.toFixed(4)}</div>
+                <div className="text-sm text-muted-foreground">KEKE</div>
+              </CardContent>
+            </Card>
+          </>
+        )}
       </div>
+
+      <Separator />
+
+      {/* 调试信息 */}
+      <DebugInfo />
+
+      {/* 矿池列表 */}
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold">矿池列表</h2>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+              {pools.length} 个活跃矿池
+            </Badge>
+          </div>
+        </div>
+
+        {pools.length > 0 ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {pools.map((pool) => (
+              <FarmPoolCard
+                key={pool.id}
+                pool={pool}
+                onRefresh={handleRefresh}
+              />
+            ))}
+          </div>
+        ) : (
+          <Card>
+            <CardContent className="text-center py-12">
+              <div className="text-muted-foreground">
+                <div className="text-lg font-medium mb-2">暂无可用矿池</div>
+                <div className="text-sm">矿池数据加载中，请稍候...</div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      {/* 使用说明 */}
+      <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
+        <CardHeader>
+          <CardTitle className="text-lg">如何使用农场？</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold">
+                  1
+                </div>
+                <h3 className="font-medium">选择矿池</h3>
+              </div>
+              <p className="text-sm text-muted-foreground ml-8">
+                选择您想要参与的矿池，查看APY和奖励信息
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold">
+                  2
+                </div>
+                <h3 className="font-medium">质押代币</h3>
+              </div>
+              <p className="text-sm text-muted-foreground ml-8">
+                质押KEKE代币或LP代币到矿池中开始赚取奖励
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold">
+                  3
+                </div>
+                <h3 className="font-medium">收获奖励</h3>
+              </div>
+              <p className="text-sm text-muted-foreground ml-8">
+                随时查看和领取您的KEKE奖励，或继续复投
+              </p>
+            </div>
+          </div>
+
+          <Separator />
+
+          <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              <span>实时收益计算</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+              <span>无锁定期限</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+              <span>复合收益</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+              <span>低手续费</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
-  );
+  )
 }
