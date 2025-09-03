@@ -22,6 +22,7 @@ import {
   Layers,
   Plus,
   Monitor,
+  TrendingUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppKit } from "@reown/appkit/react";
@@ -50,6 +51,11 @@ export function Navigation() {
       title: "创建代币",
       href: "/create-token",
       icon: <Plus className="w-4 h-4" />,
+    },
+    {
+      title: "热门代币",
+      href: "/trending",
+      icon: <TrendingUp className="w-4 h-4" />,
     },
     {
       title: "农场",

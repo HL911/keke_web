@@ -5,6 +5,7 @@ import { processTradeForKlines } from './kline'
 import { broadcastTradeUpdate } from './websocket-server'
 import poolAbi from '../abi/Pool.json'
 import sepoliaAddresses from '../config/address/sepolia.json'
+import {updateMemeTokenPrice} from '../app/api/utils/meme-token-queries'
 
 // 网络配置映射
 const NETWORK_CONFIG: Record<number, {
@@ -25,6 +26,11 @@ const NETWORK_CONFIG: Record<number, {
   }
 }
 
+
+
+// 24小时交易量
+const VOLUME_24H = new Map<string, number> ()
+
 // 活跃的监听器映射
 const activeListeners = new Map<number, () => void>()
 
@@ -39,6 +45,7 @@ const wsUrlIndex = new Map<number, number>()
 
 // 错误计数映射，用于跟踪连续错误次数
 const errorCount = new Map<number, number>()
+
 
 // 为指定链ID创建客户端 - 优先使用WebSocket，失败时使用HTTP
 const createClient = async (chainId: number) => {
@@ -110,6 +117,7 @@ const getPoolAddress = (chainId: number): string | null => {
   return SERVER_NETWORK_CONTRACTS[chainId]?.poolAddress || null
 }
 
+
 // 获取所有支持的链ID
 const getSupportedChains = (): number[] => {
   return Object.keys(SERVER_NETWORK_CONTRACTS).map(Number)
@@ -117,6 +125,7 @@ const getSupportedChains = (): number[] => {
 
 // 保存Trade事件到数据库
 async function saveTradeEvent(event: any) {
+  const chainId = event.chainId // 从event中获取chainId
   try {
     const tradeEventData = {
       network: event.chainId.toString(),
@@ -126,12 +135,62 @@ async function saveTradeEvent(event: any) {
       eth_amount: formatEther(event.args.ethAmount),
       token_address: event.args.mint,
       isBuy: event.args.isBuy,
-      price: (Number(event.args.ethAmount) / Number(event.args.tokenAmount)).toString(),
+      price: (() => {
+        const ethAmount = Number(formatEther(event.args.ethAmount))
+        const tokenAmount = Number(formatEther(event.args.tokenAmount))
+        
+        // 防止除零错误和无效数据
+        if (tokenAmount === 0 || isNaN(ethAmount) || isNaN(tokenAmount)) {
+          console.warn('Invalid price calculation data:', { ethAmount, tokenAmount })
+          return '0'
+        }
+        
+        return (ethAmount / tokenAmount).toString()
+      })(),
       timestamp: new Date().toISOString()
     }
+
+    // 计算24小时交易量
+    const tokenAddress = tradeEventData.token_address
+    let volume24h = VOLUME_24H.get(tokenAddress) || 0
+    const tokenAmount = Number(tradeEventData.token_amount)
+    
+    // 验证数据有效性
+    if (isNaN(tokenAmount) || tokenAmount <= 0) {
+      console.warn(`Invalid token amount for ${tokenAddress}:`, tradeEventData.token_amount)
+      return
+    }
+    
+    volume24h = Number(volume24h) + tokenAmount
+    VOLUME_24H.set(tokenAddress, volume24h)
+    
+    const priceUsd = Number(tradeEventData.price)
+    if (isNaN(priceUsd) || priceUsd <= 0) {
+      console.warn(`Invalid price for ${tokenAddress}:`, tradeEventData.price)
+      return
+    }
+    
+    try {
+      // 计算简化的市值 (价格 * 交易量的估算)
+      const marketCap = priceUsd * 1000000000 * 5000;
+      
+      // 更新代币价格和交易数据
+      await updateMemeTokenPrice(
+        tokenAddress,
+        priceUsd,
+        marketCap,
+        volume24h
+      )
+      console.log("保存到updateMemeTokenPrice--------",tokenAddress,priceUsd,marketCap,volume24h)
+    } catch (error) {
+      console.error(`Error updating meme token data for ${tokenAddress}:`, error)
+      // 继续执行，不要因为这个错误中断整个流程
+    }
+
     
     // 保存交易事件到数据库
     await insertTradeEvent(tradeEventData)
+    console.log("保存到insertTradeEvent---------")
     console.log(`Trade event saved for chain ${event.chainId}:`, event.transactionHash)
     
     // 触发K线数据聚合
