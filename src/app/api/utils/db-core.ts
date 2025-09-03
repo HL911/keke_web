@@ -23,8 +23,8 @@ const TABLE_SCHEMAS = {
       tvl_usd REAL DEFAULT 0,
       volume_24h TEXT DEFAULT '0',
       is_active BOOLEAN DEFAULT 1,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      created_at DATETIME DEFAULT (datetime('now', 'localtime')),
+      updated_at DATETIME DEFAULT (datetime('now', 'localtime'))
     )
   `,
 
@@ -39,10 +39,35 @@ const TABLE_SCHEMAS = {
       price_usd REAL DEFAULT 0,
       market_cap REAL DEFAULT 0,
       volume_24h REAL DEFAULT 0,
+      description TEXT,
       logo_uri TEXT,
+      twitterAddress TEXT,
+      telegramAddress TEXT,
+      websiteAddress TEXT,
       is_verified BOOLEAN DEFAULT 0,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      created_at DATETIME DEFAULT (datetime('now', 'localtime')),
+      updated_at DATETIME DEFAULT (datetime('now', 'localtime'))
+    )
+  `,
+    meme_tokens: `
+    CREATE TABLE IF NOT EXISTS meme_tokens (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      address TEXT UNIQUE NOT NULL,
+      symbol TEXT NOT NULL,
+      name TEXT NOT NULL,
+      decimals INTEGER NOT NULL DEFAULT 18,
+      total_supply TEXT NOT NULL DEFAULT '0',
+      price_usd REAL DEFAULT 0,
+      market_cap REAL DEFAULT 0,
+      volume_24h REAL DEFAULT 0,
+      description TEXT,
+      logo_uri TEXT,
+      twitterAddress TEXT,
+      telegramAddress TEXT,
+      websiteAddress TEXT,
+      is_verified BOOLEAN DEFAULT 0,
+      created_at DATETIME DEFAULT (datetime('now', 'localtime')),
+      updated_at DATETIME DEFAULT (datetime('now', 'localtime'))
     )
   `,
 
@@ -63,7 +88,7 @@ const TABLE_SCHEMAS = {
       gas_used INTEGER,
       gas_price TEXT,
       status TEXT DEFAULT 'PENDING',
-      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+      timestamp DATETIME DEFAULT (datetime('now', 'localtime')),
       FOREIGN KEY (pair_address) REFERENCES trading_pairs(pair_address)
     )
   `,
@@ -76,7 +101,7 @@ const TABLE_SCHEMAS = {
       lp_balance TEXT NOT NULL DEFAULT '0',
       token0_balance TEXT NOT NULL DEFAULT '0',
       token1_balance TEXT NOT NULL DEFAULT '0',
-      last_updated DATETIME DEFAULT CURRENT_TIMESTAMP,
+      last_updated DATETIME DEFAULT (datetime('now', 'localtime')),
       UNIQUE(user_address, pair_address),
       FOREIGN KEY (pair_address) REFERENCES trading_pairs(pair_address)
     )
@@ -88,7 +113,7 @@ const TABLE_SCHEMAS = {
       pair_address TEXT NOT NULL,
       price0_cumulative TEXT NOT NULL,
       price1_cumulative TEXT NOT NULL,
-      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+      timestamp DATETIME DEFAULT (datetime('now', 'localtime')),
       FOREIGN KEY (pair_address) REFERENCES trading_pairs(pair_address)
     )
   `,
@@ -205,7 +230,7 @@ async function insertInitialTokens(): Promise<void> {
         name: "Keke Token",
         decimals: 18,
         is_verified: true,
-        logo_uri: "/public/keke-logo.png",
+        logo_uri: "/token-logos/keke-logo.png",
       },
       {
         address: "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
@@ -213,7 +238,7 @@ async function insertInitialTokens(): Promise<void> {
         name: "Wrapped Ether",
         decimals: 18,
         is_verified: true,
-        logo_uri: "/public/weth-logo.png",
+        logo_uri: "/token-logos/weth-logo.png",
       },
       {
         address: "0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6",
@@ -221,7 +246,7 @@ async function insertInitialTokens(): Promise<void> {
         name: "Tether USD",
         decimals: 6,
         is_verified: true,
-        logo_uri: "/public/usdt-logo.png",
+        logo_uri: "/token-logos/usdt-logo.png",
       },
       {
         address: "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318",
@@ -229,7 +254,7 @@ async function insertInitialTokens(): Promise<void> {
         name: "USD Coin",
         decimals: 6,
         is_verified: true,
-        logo_uri: "/public/usdc-logo.png",
+        logo_uri: "/token-logos/usdc-logo.png",
       },
       {
         address: "0x610178dA211FEF7D417bC0e6FeD39F05609AD788",
@@ -237,7 +262,7 @@ async function insertInitialTokens(): Promise<void> {
         name: "Wrapped BNB",
         decimals: 18,
         is_verified: true,
-        logo_uri: "/public/wbnb-logo.png",
+        logo_uri: "/token-logos/wbnb-logo.png",
       },
       {
         address: "0xB7f8BC63BbcaD18155201308C8f3540b07f84F5e",
@@ -245,7 +270,7 @@ async function insertInitialTokens(): Promise<void> {
         name: "Wrapped BTC",
         decimals: 8,
         is_verified: true,
-        logo_uri: "/public/wbtc-logo.png",
+        logo_uri: "/token-logos/wbtc-logo.png",
       },
     ];
 
@@ -254,7 +279,7 @@ async function insertInitialTokens(): Promise<void> {
         `
         INSERT OR REPLACE INTO tokens (
           address, symbol, name, decimals, is_verified, logo_uri, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        ) VALUES (?, ?, ?, ?, ?, ?, datetime('now', 'localtime'), datetime('now', 'localtime'))
         `,
         [
           token.address,
@@ -377,7 +402,7 @@ async function insertInitialLiquidity(): Promise<void> {
           pair_address, token0_address, token1_address, total_supply, 
           reserve0, reserve1, tvl_usd, volume_24h, is_active, 
           created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'), datetime('now', 'localtime'))
         `,
         [
           pair.pair_address,
@@ -517,7 +542,11 @@ export interface Token {
   price_usd: number;
   market_cap: number;
   volume_24h: number;
+  description?: string;
   logo_uri?: string;
+  twitterAddress?: string;
+  telegramAddress?: string;
+  websiteAddress?: string;
   is_verified: boolean;
   created_at: string;
   updated_at: string;

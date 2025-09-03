@@ -39,7 +39,7 @@ export async function updatePairReserves(
   await executeUpdate(
     `
     UPDATE trading_pairs 
-    SET reserve0 = ?, reserve1 = ?, total_supply = ?, updated_at = CURRENT_TIMESTAMP
+    SET reserve0 = ?, reserve1 = ?, total_supply = ?, updated_at = datetime('now', 'localtime')
     WHERE pair_address = ?
     `,
     [reserve0, reserve1, totalSupply, pairAddress]
@@ -57,7 +57,7 @@ export async function updatePairStats(
   await executeUpdate(
     `
     UPDATE trading_pairs 
-    SET tvl_usd = ?, volume_24h = ?, updated_at = CURRENT_TIMESTAMP
+    SET tvl_usd = ?, volume_24h = ?, updated_at = datetime('now', 'localtime')
     WHERE pair_address = ?
     `,
     [tvlUsd, volume24h, pairAddress]
@@ -200,7 +200,7 @@ export async function batchUpdatePairReserves(
       `
       UPDATE trading_pairs 
       SET reserve0 = ?, reserve1 = ?, total_supply = ?, 
-          tvl_usd = COALESCE(?, tvl_usd), updated_at = CURRENT_TIMESTAMP
+          tvl_usd = COALESCE(?, tvl_usd), updated_at = datetime('now', 'localtime')
       WHERE pair_address = ?
       `,
       [
