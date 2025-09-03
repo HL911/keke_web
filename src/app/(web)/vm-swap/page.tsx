@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { TrendingUp, TrendingDown, Volume2, Users, Activity } from "lucide-react";
 import { useAccount } from "wagmi";
 import { Toaster } from "sonner";
-import { TradingChart, TradingPanel, OrderBook, TradingChartSimple } from './components';
+import { TradingChart, TradingPanel, OrderBook } from './components';
 
 export default function VMSwapPage() {
   const { address } = useAccount();
@@ -102,8 +102,7 @@ export default function VMSwapPage() {
       <div className="max-w-7xl mx-auto p-4 grid grid-cols-12 gap-6 h-[calc(100vh-120px)]">
         {/* 左侧：图表区域 */}
         <div className="col-span-8">
-          {/* <TradingChart symbol="KEKE/USDT" tokenName="KEKE" /> */}
-          {/* <TradingChartSimple ></TradingChartSimple> */}
+          <TradingChart symbol="KEKE/USDT" tokenName="KEKE" />
           {/* 订单簿 */}
         <OrderBook />
         </div>
