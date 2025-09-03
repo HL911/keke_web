@@ -54,15 +54,14 @@ export default function TradingPanel({ symbol = "KEKE", currentPrice = "0.42814"
     refreshBalances,
     // Meme 代币相关
     memeTokenInfo,
-    memeTokenLoading,
     fetchMemeTokenInfo,
-    getTokenInfo,
   } = useTrading();
 
   // 获取 meme 代币信息
   useEffect(() => {
+    console.log('fetchMemeTokenInfo-1', symbol);
     fetchMemeTokenInfo(symbol);
-  }, [symbol, fetchMemeTokenInfo]);
+  }, [symbol]);
 
   // 获取代币余额 - 只处理 meme 代币和 ETH
   const tokenBalanceQuery = useMemeTokenBalance(memeTokenInfo?.address, symbol)    
@@ -127,10 +126,9 @@ export default function TradingPanel({ symbol = "KEKE", currentPrice = "0.42814"
         refreshBalances();
         toast.success('余额已更新！');
       }, 2000);
-      
       return () => clearTimeout(refreshTimer);
     }
-  }, [isConfirmed, refreshBalances]);
+  }, [isConfirmed]);
 
   const calculateTotal = (amount: string, price: string) => {
     const numAmount = parseFloat(amount) || 0;

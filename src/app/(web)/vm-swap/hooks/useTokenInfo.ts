@@ -1,3 +1,13 @@
+/*
+ * @Author: dreamworks.cnn@gmail.com
+ * @Date: 2025-09-03 23:54:32
+ * @LastEditors: dreamworks.cnn@gmail.com
+ * @LastEditTime: 2025-09-04 00:46:52
+ * @FilePath: /keke_web/src/app/(web)/vm-swap/hooks/useTokenInfo.ts
+ * @Description: 
+ * 
+ * Copyright (c) 2025 by ${git_name_email}, All Rights Reserved. 
+ */
 "use client";
 
 import { useState, useCallback } from 'react';
@@ -20,11 +30,7 @@ export function useTokenInfo() {
   }, [getETHInfo, memeTokenInfo]);
 
   // 获取 meme 代币信息
-  const fetchMemeTokenInfo = useCallback(async (symbol: string) => {
-    // 跳过 ETH 相关代币
-    if (symbol === 'ETH' || symbol === 'WETH') {
-      return getETHInfo();
-    }
+  const fetchMemeTokenInfo = useCallback(async (symbol: string) => {    
     
     if (memeTokenLoading) {
       return; // 正在加载中，避免重复请求
@@ -57,15 +63,9 @@ export function useTokenInfo() {
     } finally {
       setMemeTokenLoading(false);
     }
-  }, [memeTokenLoading, getETHInfo]);
+  }, [memeTokenLoading]);
 
-  // 获取代币信息 - 只处理 meme 代币和 ETH
-  const getTokenInfo = useCallback((symbol: string) => {
-    if (symbol === 'ETH' || symbol === 'WETH') {
-      return getETHInfo();
-    }
-    return memeTokenInfo;
-  }, [memeTokenInfo, getETHInfo]);
+  
 
   return {
     // 状态
@@ -75,6 +75,5 @@ export function useTokenInfo() {
     // 函数
     fetchMemeTokenInfo,
     getTokenConfigBySymbol,
-    getTokenInfo,
   };
 }
