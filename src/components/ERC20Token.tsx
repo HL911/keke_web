@@ -5,8 +5,8 @@ import {
   useWriteContract,
   useWaitForTransactionReceipt,
 } from "wagmi";
-import { chain } from "../config/contract-config";
-import { parseEther } from "viem";
+import { parseEther, Abi } from "viem";
+// import { chain } from "../config/contract-config"; // chain 不存在，暂时注释掉
 
 const ERC20_ABI = [
   {
@@ -246,7 +246,7 @@ export function useERC20Balance(
   } = useReadContract({
     address: contractAddress as `0x${string}`,
     abi: ERC20_ABI,
-    chainId: chain.id,
+    chainId: 11155111, // Sepolia testnet
     functionName: "balanceOf",
     args: accountAddress ? [accountAddress] : undefined,
     query: { enabled: !!accountAddress && !!contractAddress },
@@ -318,7 +318,7 @@ export function useERC20Allowance(
   } = useReadContract({
     address: contractAddress as `0x${string}`,
     abi: ERC20_ABI,
-    chainId: chain.id,
+    chainId: 11155111, // Sepolia testnet
     functionName: "allowance",
     args: [ownerAddress as `0x${string}`, spenderAddress as `0x${string}`],
     query: { enabled: !!contractAddress && !!ownerAddress && !!spenderAddress },

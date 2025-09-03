@@ -1,226 +1,219 @@
-import { useState } from 'react';
-import { useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
-import { parseEther } from 'viem';
-import SmartChefABI from '../abi/SmartChef.json';
-import { Abi } from 'viem';
+import { useCallback, useState } from 'react';
+import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { Address, parseEther, formatEther } from 'viem';
 import { useSmartChefAddress } from './useContract';
-
-// SmartChef池子信息类型
-interface SmartChefPoolInfo {
-  stakedToken: string;
-  rewardToken: string;
-  rewardPerBlock: bigint;
-  startBlock: bigint;
-  bonusEndBlock: bigint;
-  poolLimitPerUser: bigint;
-}
-
-// SmartChef用户信息类型
-interface SmartChefUserInfo {
-  amount: bigint;
-  rewardDebt: bigint;
-}
-
-// Hook返回类型
-interface UseSmartChefReturn {
-  // 读取函数
-  getUserInfo: (user: string) => SmartChefUserInfo | undefined;
-  getPendingReward: (user: string) => bigint | undefined;
-  getPoolInfo: () => SmartChefPoolInfo | undefined;
-  getStakedToken: () => string | undefined;
-  getRewardToken: () => string | undefined;
-  getRewardPerBlock: () => bigint | undefined;
-  
-  // 写入函数
-  deposit: (amount: string) => Promise<void>;
-  withdraw: (amount: string) => Promise<void>;
-  emergencyWithdraw: () => Promise<void>;
-  
-  // 状态
-  isLoading: boolean;
-  isSuccess: boolean;
-  error: string | null;
-  txHash: string | undefined;
-}
+import SmartChefABI from '../abi/SmartChef.json';
 
 /**
  * SmartChef合约交互Hook
- * 提供单币质押功能
+ * 提供单币质押相关的所有功能
  */
-export function useSmartChef(): UseSmartChefReturn {
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+export function useSmartChef() {
+  const { address } = useAccount();
   const smartChefAddress = useSmartChefAddress();
+  const [error, setError] = useState<string | null>(null);
 
-  // 写入合约的hook
-  const { writeContract, data: hash, error: writeError } = useWriteContract();
-
+  // 写入合约
+  const { writeContract, data: writeData, isPending: isWritePending } = useWriteContract();
+  
   // 等待交易确认
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
-    hash,
-  });
-
-  // 读取质押代币地址
-  const { data: stakedToken } = useReadContract({
-    address: smartChefAddress as `0x${string}`,
-    abi: SmartChefABI as unknown as Abi,
-    functionName: 'stakedToken',
-    query: { enabled: !!smartChefAddress },
-  });
-
-  // 读取奖励代币地址
-  const { data: rewardToken } = useReadContract({
-    address: smartChefAddress as `0x${string}`,
-    abi: SmartChefABI as unknown as Abi,
-    functionName: 'rewardToken',
-    query: { enabled: !!smartChefAddress },
-  });
-
-  // 读取每块奖励
-  const { data: rewardPerBlock } = useReadContract({
-    address: smartChefAddress as `0x${string}`,
-    abi: SmartChefABI as unknown as Abi,
-    functionName: 'rewardPerBlock',
-    query: { enabled: !!smartChefAddress },
+  const { isLoading: isTxLoading, isSuccess } = useWaitForTransactionReceipt({
+    hash: writeData,
   });
 
   /**
-   * 获取池子信息
+   * 获取质押代币地址
    */
-  const getPoolInfo = (): SmartChefPoolInfo | undefined => {
-    // SmartChef合约可能没有单独的poolInfo函数，需要组合多个读取
-    if (!stakedToken || !rewardToken || !rewardPerBlock) {
-      return undefined;
-    }
-    
-    return {
-      stakedToken: stakedToken as string,
-      rewardToken: rewardToken as string,
-      rewardPerBlock: rewardPerBlock as bigint,
-      startBlock: BigInt(0), // 需要根据实际合约调整
-      bonusEndBlock: BigInt(0), // 需要根据实际合约调整
-      poolLimitPerUser: BigInt(0), // 需要根据实际合约调整
-    };
-  };
+  const { data: stakedToken } = useReadContract({
+    address: smartChefAddress as Address,
+    abi: SmartChefABI.abi,
+    functionName: 'stakedToken',
+    query: {
+      enabled: !!smartChefAddress,
+    },
+  });
+
+  /**
+   * 获取奖励代币地址
+   */
+  const { data: rewardToken } = useReadContract({
+    address: smartChefAddress as Address,
+    abi: SmartChefABI.abi,
+    functionName: 'rewardToken',
+    query: {
+      enabled: !!smartChefAddress,
+    },
+  });
+
+  /**
+   * 获取每个区块的奖励
+   */
+  const { data: rewardPerBlock } = useReadContract({
+    address: smartChefAddress as Address,
+    abi: SmartChefABI.abi,
+    functionName: 'rewardPerBlock',
+    query: {
+      enabled: !!smartChefAddress,
+    },
+  });
+
+  /**
+   * 获取开始区块
+   */
+  const { data: startBlock } = useReadContract({
+    address: smartChefAddress as Address,
+    abi: SmartChefABI.abi,
+    functionName: 'startBlock',
+    query: {
+      enabled: !!smartChefAddress,
+    },
+  });
+
+  /**
+   * 获取结束区块
+   */
+  const { data: bonusEndBlock } = useReadContract({
+    address: smartChefAddress as Address,
+    abi: SmartChefABI.abi,
+    functionName: 'bonusEndBlock',
+    query: {
+      enabled: !!smartChefAddress,
+    },
+  });
 
   /**
    * 获取用户信息
-   * @param user 用户地址
    */
-  const getUserInfo = (user: string): SmartChefUserInfo | undefined => {
-    const { data } = useReadContract({
-      address: smartChefAddress as `0x${string}`,
-      abi: SmartChefABI as unknown as Abi,
+  const getUserInfo = useCallback((userAddress?: Address) => {
+    const targetAddress = userAddress || address;
+    return useReadContract({
+      address: smartChefAddress as Address,
+      abi: SmartChefABI.abi,
       functionName: 'userInfo',
-      args: [user as `0x${string}`],
-      query: { enabled: !!smartChefAddress && !!user },
+      args: [targetAddress],
+      query: {
+        enabled: !!smartChefAddress && !!targetAddress,
+      },
     });
-    return data as SmartChefUserInfo | undefined;
-  };
+  }, [smartChefAddress, address]);
 
   /**
-   * 获取待收获奖励
-   * @param user 用户地址
+   * 获取待领取奖励
    */
-  const getPendingReward = (user: string): bigint | undefined => {
-    const { data } = useReadContract({
-      address: smartChefAddress as `0x${string}`,
-      abi: SmartChefABI as unknown as Abi,
+  const getPendingReward = useCallback((userAddress?: Address) => {
+    const targetAddress = userAddress || address;
+    return useReadContract({
+      address: smartChefAddress as Address,
+      abi: SmartChefABI.abi,
       functionName: 'pendingReward',
-      args: [user as `0x${string}`],
-      query: { enabled: !!smartChefAddress && !!user },
+      args: [targetAddress],
+      query: {
+        enabled: !!smartChefAddress && !!targetAddress,
+      },
     });
-    return data as bigint | undefined;
-  };
+  }, [smartChefAddress, address]);
+
+  /**
+   * 获取用户质押限制
+   */
+  const { data: poolLimitPerUser } = useReadContract({
+    address: smartChefAddress as Address,
+    abi: SmartChefABI.abi,
+    functionName: 'poolLimitPerUser',
+    query: {
+      enabled: !!smartChefAddress,
+    },
+  });
+
+  /**
+   * 获取是否有用户限制
+   */
+  const { data: hasUserLimit } = useReadContract({
+    address: smartChefAddress as Address,
+    abi: SmartChefABI.abi,
+    functionName: 'hasUserLimit',
+    query: {
+      enabled: !!smartChefAddress,
+    },
+  });
 
   /**
    * 质押代币
-   * @param amount 质押数量
    */
-  const deposit = async (amount: string): Promise<void> => {
+  const deposit = useCallback(async (amount: string): Promise<void> => {
     if (!smartChefAddress) {
-      throw new Error('SmartChef合约地址未配置');
+      throw new Error("SmartChef合约地址未找到");
     }
-
+    
     try {
-      setIsLoading(true);
       setError(null);
-
       await writeContract({
-        address: smartChefAddress as `0x${string}`,
-        abi: SmartChefABI as unknown as Abi,
-        functionName: 'deposit',
+        address: smartChefAddress as Address,
+        abi: SmartChefABI.abi,
+        functionName: "deposit",
         args: [parseEther(amount)],
       });
     } catch (err: any) {
-      setError(err.message || '质押失败');
-      console.error('质押失败:', err);
-    } finally {
-      setIsLoading(false);
+      setError(err.message || "质押失败");
+      throw err;
     }
-  };
+  }, [smartChefAddress, writeContract]);
 
   /**
    * 提取代币
-   * @param amount 提取数量
    */
-  const withdraw = async (amount: string): Promise<void> => {
+  const withdraw = useCallback(async (amount: string): Promise<void> => {
     if (!smartChefAddress) {
-      throw new Error('SmartChef合约地址未配置');
+      throw new Error("SmartChef合约地址未找到");
     }
-
+    
     try {
-      setIsLoading(true);
       setError(null);
-
       await writeContract({
-        address: smartChefAddress as `0x${string}`,
-        abi: SmartChefABI as unknown as Abi,
-        functionName: 'withdraw',
+        address: smartChefAddress as Address,
+        abi: SmartChefABI.abi,
+        functionName: "withdraw",
         args: [parseEther(amount)],
       });
     } catch (err: any) {
-      setError(err.message || '提取失败');
-      console.error('提取失败:', err);
-    } finally {
-      setIsLoading(false);
+      setError(err.message || "提取失败");
+      throw err;
     }
-  };
+  }, [smartChefAddress, writeContract]);
 
   /**
-   * 紧急提取（不收获奖励）
+   * 紧急提取（不领取奖励）
    */
-  const emergencyWithdraw = async (): Promise<void> => {
+  const emergencyWithdraw = useCallback(async (): Promise<void> => {
     if (!smartChefAddress) {
-      throw new Error('SmartChef合约地址未配置');
+      throw new Error("SmartChef合约地址未找到");
     }
-
+    
     try {
-      setIsLoading(true);
       setError(null);
-
       await writeContract({
-        address: smartChefAddress as `0x${string}`,
-        abi: SmartChefABI as unknown as Abi,
-        functionName: 'emergencyWithdraw',
+        address: smartChefAddress as Address,
+        abi: SmartChefABI.abi,
+        functionName: "emergencyWithdraw",
         args: [],
       });
     } catch (err: any) {
-      setError(err.message || '紧急提取失败');
-      console.error('紧急提取失败:', err);
-    } finally {
-      setIsLoading(false);
+      setError(err.message || "紧急提取失败");
+      throw err;
     }
-  };
+  }, [smartChefAddress, writeContract]);
 
   return {
-    // 读取函数
+    // 读取数据
+    stakedToken,
+    rewardToken,
+    rewardPerBlock,
+    startBlock,
+    bonusEndBlock,
+    poolLimitPerUser,
+    hasUserLimit,
     getUserInfo,
     getPendingReward,
-    getPoolInfo,
-    getStakedToken: () => stakedToken as string | undefined,
-    getRewardToken: () => rewardToken as string | undefined,
-    getRewardPerBlock: () => rewardPerBlock as bigint | undefined,
     
     // 写入函数
     deposit,
@@ -228,12 +221,69 @@ export function useSmartChef(): UseSmartChefReturn {
     emergencyWithdraw,
     
     // 状态
-    isLoading: isLoading || isConfirming,
+    isLoading: isWritePending || isTxLoading,
     isSuccess,
-    error: error || writeError?.message || null,
-    txHash: hash,
+    error,
+    txHash: writeData,
   };
 }
 
-// 导出类型
-export type { SmartChefPoolInfo, SmartChefUserInfo, UseSmartChefReturn };
+/**
+ * SmartChef用户信息类型
+ */
+export interface SmartChefUserInfo {
+  amount: bigint;
+  rewardDebt: bigint;
+}
+
+/**
+ * 计算SmartChef池子的APR
+ */
+export function calculateSmartChefAPR(
+  rewardPerBlock: bigint,
+  totalStaked: bigint,
+  rewardTokenPrice: number = 1,
+  stakedTokenPrice: number = 1
+): number {
+  if (!totalStaked || totalStaked === BigInt(0)) return 0;
+  
+  // 每天大约产生6400个区块（假设15秒一个区块）
+  const blocksPerDay = BigInt(6400);
+  const blocksPerYear = blocksPerDay * BigInt(365);
+  
+  // 计算年奖励
+  const yearlyReward = rewardPerBlock * blocksPerYear;
+  const yearlyRewardValue = Number(formatEther(yearlyReward)) * rewardTokenPrice;
+  
+  // 计算质押价值
+  const stakedValue = Number(formatEther(totalStaked)) * stakedTokenPrice;
+  
+  return (yearlyRewardValue / stakedValue) * 100;
+}
+
+/**
+ * 检查池子是否已结束
+ */
+export function isPoolEnded(bonusEndBlock: bigint, currentBlock: bigint): boolean {
+  return currentBlock >= bonusEndBlock;
+}
+
+/**
+ * 检查池子是否已开始
+ */
+export function isPoolStarted(startBlock: bigint, currentBlock: bigint): boolean {
+  return currentBlock >= startBlock;
+}
+
+/**
+ * 获取池子状态
+ */
+export function getPoolStatus(startBlock: bigint, bonusEndBlock: bigint, currentBlock: bigint): 'upcoming' | 'live' | 'finished' {
+  if (currentBlock < startBlock) {
+    return 'upcoming';
+  } else if (currentBlock >= startBlock && currentBlock < bonusEndBlock) {
+    return 'live';
+  } else {
+    return 'finished';
+  }
+}

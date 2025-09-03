@@ -1,114 +1,127 @@
 'use client';
 
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { TrendingUp, Users, DollarSign, Percent } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useReadContract } from 'wagmi';
+import { Address, formatEther } from 'viem';
+import { useMaster } from '@/hooks/useMaster';
+import { useKekeTokenAddress } from '@/hooks/useContract';
+import { Award, TrendingUp, Users, Coins } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface FarmStatsProps {
-  totalValueLocked: string;
-  totalUsers: number;
-  averageApr: number;
-  totalRewardsDistributed: string;
-  isLoading?: boolean;
+  className?: string;
 }
 
 /**
- * 农场统计数据组件
- * 显示总锁定价值、用户数量、平均APR等关键指标
+ * 农场统计信息组件
+ * 显示总锁仓价值、总奖励等关键指标
  */
-export default function FarmStats({
-  totalValueLocked,
-  totalUsers,
-  averageApr,
-  totalRewardsDistributed,
-  isLoading = false,
-}: FarmStatsProps) {
+export function FarmStats({ className }: FarmStatsProps) {
+  const { kekePerBlock, totalAllocPoint } = useMaster();
+  const kekeTokenAddress = useKekeTokenAddress();
+
+  // 获取KEKE代币总供应量
+  const { data: totalSupply } = useReadContract({
+    address: kekeTokenAddress as Address,
+    abi: [
+      {
+        name: 'totalSupply',
+        type: 'function',
+        stateMutability: 'view',
+        inputs: [],
+        outputs: [{ name: '', type: 'uint256' }],
+      },
+    ],
+    functionName: 'totalSupply',
+    query: {
+      enabled: !!kekeTokenAddress,
+    },
+  });
+
+  // 计算每日KEKE产出
+  const dailyKekeEmission = kekePerBlock ? 
+    Number(formatEther(kekePerBlock as bigint)) * 6400 : 0; // 假设每天6400个区块
+
   const stats = [
     {
-      title: '总锁定价值',
-      value: isLoading ? '' : `$${parseFloat(totalValueLocked).toLocaleString()}`,
-      icon: DollarSign,
-      color: 'text-green-600',
-      bgColor: 'bg-green-50',
-      description: 'TVL',
+      title: 'KEKE每区块产出',
+      value: kekePerBlock ? `${formatEther(kekePerBlock as bigint)} KEKE` : '--',
+      description: '每个区块产出的KEKE代币数量',
+      icon: '⚡',
+      loading: !kekePerBlock,
     },
     {
-      title: '活跃农场用户',
-      value: isLoading ? '' : totalUsers.toLocaleString(),
-      icon: Users,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50',
-      description: '用户',
+      title: '每日KEKE产出',
+      value: dailyKekeEmission ? `${dailyKekeEmission.toLocaleString()} KEKE` : '--',
+      description: '预计每日产出的KEKE代币总量',
+      icon: '📅',
+      loading: !kekePerBlock,
     },
     {
-      title: '平均年化收益率',
-      value: isLoading ? '' : `${averageApr.toFixed(2)}%`,
-      icon: Percent,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-50',
-      description: 'APR',
+      title: '总分配点数',
+      value: totalAllocPoint ? totalAllocPoint.toString() : '--',
+      description: '所有农场池的分配点数总和',
+      icon: '🎯',
+      loading: !totalAllocPoint,
     },
     {
-      title: '累计奖励分发',
-      value: isLoading ? '' : `${parseFloat(totalRewardsDistributed).toLocaleString()} KEKE`,
-      icon: TrendingUp,
-      color: 'text-orange-600',
-      bgColor: 'bg-orange-50',
-      description: '奖励',
+      title: 'KEKE总供应量',
+      value: totalSupply ? `${Number(formatEther(totalSupply as bigint)).toLocaleString()} KEKE` : '--',
+      description: 'KEKE代币的总供应量',
+      icon: '💰',
+      loading: !totalSupply,
     },
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-      {stats.map((stat, index) => {
-        const Icon = stat.icon;
-        
-        return (
-          <Card key={index} className="hover:shadow-lg transition-shadow duration-200">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                {stat.title}
-              </CardTitle>
-              <div className={`p-2 rounded-lg ${stat.bgColor}`}>
-                <Icon className={`w-4 h-4 ${stat.color}`} />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-1">
-                {isLoading ? (
-                  <div className="h-8 w-24 bg-gray-200 rounded animate-pulse" />
-                ) : (
-                  <div className="text-2xl font-bold">{stat.value}</div>
-                )}
-                <p className="text-xs text-gray-500">{stat.description}</p>
-              </div>
-            </CardContent>
-          </Card>
-        );
-      })}
+    <div className={cn('grid gap-4 md:grid-cols-2 lg:grid-cols-4', className)}>
+      {stats.map((stat, index) => (
+        <Card key={index} className="relative overflow-hidden">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">
+              {stat.title}
+            </CardTitle>
+            <span className="text-2xl">{stat.icon}</span>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-1">
+              {stat.loading ? (
+                <Skeleton className="h-8 w-24" />
+              ) : (
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {stat.value}
+                </div>
+              )}
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {stat.description}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
     </div>
   );
 }
 
 /**
- * 农场统计数据骨架屏组件
+ * 简化版农场统计组件
  */
-export function FarmStatsSkeleton() {
+export function SimpleFarmStats() {
+  const { kekePerBlock } = useMaster();
+  
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-      {Array.from({ length: 4 }).map((_, index) => (
-        <Card key={index}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <div className="h-4 w-20 bg-gray-200 rounded animate-pulse" />
-            <div className="h-8 w-8 bg-gray-200 rounded-lg animate-pulse" />
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-1">
-              <div className="h-8 w-24 bg-gray-200 rounded animate-pulse" />
-              <div className="h-3 w-12 bg-gray-200 rounded animate-pulse" />
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+    <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-300">
+      <div className="flex items-center gap-1">
+        <span>⚡</span>
+        <span>每区块: {kekePerBlock ? formatEther(kekePerBlock as bigint) : '--'} KEKE</span>
+      </div>
+      <div className="flex items-center gap-1">
+        <span>📅</span>
+        <span>每日: {kekePerBlock ? (Number(formatEther(kekePerBlock as bigint)) * 6400).toLocaleString() : '--'} KEKE</span>
+      </div>
     </div>
   );
 }

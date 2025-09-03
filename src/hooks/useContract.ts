@@ -1,8 +1,11 @@
 import { useChainId } from "wagmi";
 import { sepolia, foundry } from "viem/chains";
-import { useTokenConfig } from "./useTokenConfig";
+import FOUNDRY_ADDRESS from "@/config/address/foundry.json";
+import SEPOLIA_ADDRESS from "@/config/address/sepolia.json";
+import EARN_ADDRESSES from "../../earn.json";
 
-
+// 导出类型
+export type { NetworkContracts, FarmContracts };
 
 // 网络合约地址配置
 interface NetworkContracts {
@@ -10,30 +13,32 @@ interface NetworkContracts {
   poolAddress: string;
   kekeswapRouterAddress: string;
   kekeswapFactoryAddress: string;
-  masterAddress: string;
-  smartChefAddress: string;
+}
+
+// 农场合约地址配置
+interface FarmContracts {
+  WETH9: string;
+  KEKE: string;
+  WETH9_KEKE_PAIR: string;
+  Master: string;
+  SyrupBar: string;
+  SmartChef: string;
 }
 
 // 不同网络的合约地址配置
 const NETWORK_CONTRACTS: Record<number, NetworkContracts> = {
   // Foundry 本地网络
-  [foundry.id]: {
-    tokenFactoryAddress: "0x5FbDB2315678afecb367f032d93F642f64180aa3", // KekeToken地址
-    poolAddress: "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512", // SyrupBar地址
-    kekeswapRouterAddress: "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9", // KekeswapRouter地址
-    kekeswapFactoryAddress: "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9", // KekeswapFactory地址
-    masterAddress: "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0", // Master合约地址
-    smartChefAddress: "0x0000000000000000000000000000000000000000", // SmartChef未部署
-  },
+  [foundry.id]: FOUNDRY_ADDRESS,
   // Sepolia 测试网络
-  [sepolia.id]: {
-    tokenFactoryAddress: "0x126DA8A2083B7b16358897aaCcf419A63BBBB24E", // 需要替换为实际部署地址
-    poolAddress: "0xf7Eaf5FA85D8dbac581B2594D931558DA969102c", // 需要替换为实际部署地址
-    kekeswapRouterAddress: "0x0000000000000000000000000000000000000000", // 需要替换为实际部署地址
-    kekeswapFactoryAddress: "0x0000000000000000000000000000000000000000", // 需要替换为实际部署地址
-    masterAddress: "0x0000000000000000000000000000000000000000", // 需要替换为实际部署地址
-    smartChefAddress: "0x0000000000000000000000000000000000000000", // 需要替换为实际部署地址
-  },
+  [sepolia.id]: SEPOLIA_ADDRESS,
+};
+
+// 农场合约地址配置
+const FARM_CONTRACTS: Record<number, FarmContracts> = {
+  // Sepolia 测试网络
+  [sepolia.id]: EARN_ADDRESSES.sepolia,
+  // Foundry 本地网络 - 使用相同的地址进行测试
+  [foundry.id]: EARN_ADDRESSES.sepolia,
 };
 
 /**
@@ -41,18 +46,20 @@ const NETWORK_CONTRACTS: Record<number, NetworkContracts> = {
  */
 export function useContract(): NetworkContracts | null {
   const chainId = useChainId();
-  
+
   if (!chainId || !(chainId in NETWORK_CONTRACTS)) {
     return null;
   }
-  
+
   return NETWORK_CONTRACTS[chainId];
 }
 
 /**
  * 获取特定合约地址的 Hook
  */
-export function useContractAddress(contractName: keyof NetworkContracts): string | null {
+export function useContractAddress(
+  contractName: keyof NetworkContracts
+): string | null {
   const contracts = useContract();
   return contracts ? contracts[contractName] : null;
 }
@@ -86,27 +93,52 @@ export function useKekeswapFactoryAddress(): string | null {
 }
 
 /**
+ * 根据当前连接的网络返回农场合约地址的 Hook
+ */
+export function useFarmContract(): FarmContracts | null {
+  const chainId = useChainId();
+
+  if (!chainId || !(chainId in FARM_CONTRACTS)) {
+    return null;
+  }
+
+  return FARM_CONTRACTS[chainId];
+}
+
+/**
+ * 获取特定农场合约地址的 Hook
+ */
+export function useFarmContractAddress(
+  contractName: keyof FarmContracts
+): string | null {
+  const contracts = useFarmContract();
+  return contracts ? contracts[contractName] : null;
+}
+
+/**
  * 获取 Master 合约地址
  */
 export function useMasterAddress(): string | null {
-  return useContractAddress("masterAddress");
+  return useFarmContractAddress("Master");
 }
 
 /**
  * 获取 SmartChef 合约地址
  */
 export function useSmartChefAddress(): string | null {
-  return useContractAddress("smartChefAddress");
+  return useFarmContractAddress("SmartChef");
 }
 
 /**
- * 获取 Token 合约地址 - 从数据库查询
- * @param symbol 代币符号
+ * 获取 KEKE 代币地址
  */
-export function useTokenAddress(symbol?: string): string | null {
-  const { tokenConfig } = useTokenConfig(symbol);
-  return tokenConfig?.address || null;
+export function useKekeTokenAddress(): string | null {
+  return useFarmContractAddress("KEKE");
 }
 
-// 导出类型
-export type { NetworkContracts };
+/**
+ * 获取 SyrupBar 合约地址
+ */
+export function useSyrupBarAddress(): string | null {
+  return useFarmContractAddress("SyrupBar");
+}
