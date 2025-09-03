@@ -55,8 +55,7 @@ export function useTrading() {
     memeTokenInfo: tokenInfo.memeTokenInfo,
     memeTokenLoading: tokenInfo.memeTokenLoading,
     fetchMemeTokenInfo: tokenInfo.fetchMemeTokenInfo,
-    getTokenConfigBySymbol: tokenInfo.getTokenConfigBySymbol,
-    getTokenInfo: tokenInfo.getTokenInfo,
+    getTokenConfigBySymbol: tokenInfo.getTokenConfigBySymbol,    
     
     // 余额查询
     useTokenBalance: balanceHooks.useTokenBalance,

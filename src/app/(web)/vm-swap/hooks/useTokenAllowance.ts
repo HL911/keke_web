@@ -63,6 +63,7 @@ export function useTokenAllowance() {
 
   // 授权代币给 Launch Pool
   const approveToken = useCallback(async (tokenSymbol: string, amount: string) => {
+    console.log('approveToken-1', tokenSymbol, amount);
     if (!isConnected || !poolAddress) {
       toast.error('请先连接钱包或等待 Launch Pool 加载完成');
       return false;
@@ -80,7 +81,9 @@ export function useTokenAllowance() {
       
       // 获取代币配置
       const tokenInfo = getTokenConfigBySymbol(tokenSymbol);
+
       const tokenAddress = tokenInfo?.address;
+      console.log('approveToken-2', tokenInfo, tokenAddress);
       
       if (!tokenAddress) {
         toast.error('获取代币配置失败');

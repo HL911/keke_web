@@ -2,7 +2,7 @@
  * @Author: dreamworks.cnn@gmail.com
  * @Date: 2025-09-03 23:54:32
  * @LastEditors: dreamworks.cnn@gmail.com
- * @LastEditTime: 2025-09-04 00:46:52
+ * @LastEditTime: 2025-09-04 00:56:22
  * @FilePath: /keke_web/src/app/(web)/vm-swap/hooks/useTokenInfo.ts
  * @Description: 
  * 
@@ -26,6 +26,7 @@ export function useTokenInfo() {
   const getTokenConfigBySymbol = useCallback((symbol: string) => {
     if (symbol === 'ETH' || symbol === 'WETH') return getETHInfo();
     // 对于 meme 代币，返回从 API 获取的信息
+    console.log('getTokenConfigBySymbol-1', symbol, memeTokenInfo);
     return memeTokenInfo;
   }, [getETHInfo, memeTokenInfo]);
 
