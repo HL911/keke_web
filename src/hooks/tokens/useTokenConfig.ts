@@ -110,10 +110,11 @@ export function useTokenConfig(symbol?: string): TokenConfigHook {
     setError(null);
 
     try {
-      const response = await fetch(`/api/tokens?symbol=${symbol}`);
+      const response = await fetch(`/api/tokens?symbol=${symbol}&action=get`);
       const result = await response.json();
 
       if (result.success) {
+        console.log('useTokenConfig:result.data', result.data)
         setTokenConfig(result.data);
       } else {
         setError(result.error || "获取代币配置失败");

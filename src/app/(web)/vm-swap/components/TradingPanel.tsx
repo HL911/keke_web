@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useAccount } from "wagmi";
 import { useTrading } from '../hooks/useTrading';
+import { useTokenConfig } from '@/hooks/tokens/useTokenConfig';
+import { useKekeswapRouterAddress } from '@/hooks/useContract';
 import { formatUnits } from 'viem';
 
 interface TradingPanelProps {
@@ -23,6 +25,52 @@ export default function TradingPanel({ symbol = "KEKE", currentPrice = "0.42814"
   const [buyPrice, setBuyPrice] = useState(currentPrice);
   const [sellPrice, setSellPrice] = useState(currentPrice);
   const [needsApproval, setNeedsApproval] = useState(false);
+  const [memeTokenInfo, setMemeTokenInfo] = useState<any>(null);
+
+  // 获取系统代币信息
+  const { tokenInfo: systemTokenInfo, loading: systemTokenLoading } = useTokenConfig(symbol);
+  // 获取 ETH 信息（交易对）
+  const { tokenInfo: ethInfo } = useTokenConfig("WETH");
+
+  // 如果不是系统代币，尝试从 meme 代币获取
+  useEffect(() => {
+    const fetchMemeTokenInfo = async () => {
+      if (systemTokenInfo || systemTokenLoading) return; // 如果已经找到系统代币，不需要查询 meme 代币
+      
+      try {
+        // 先尝试通过 symbol 搜索
+        const searchResponse = await fetch(`/api/meme-tokens?action=search&search=${symbol}`);
+        const searchResult = await searchResponse.json();
+        
+        if (searchResult.success && searchResult.data.length > 0) {
+          // 找到匹配的 meme 代币
+          const exactMatch = searchResult.data.find((token: any) => 
+            token.symbol.toLowerCase() === symbol.toLowerCase()
+          );
+          
+          if (exactMatch) {
+            setMemeTokenInfo(exactMatch);
+            console.log('找到 meme 代币:', exactMatch);
+          }
+        }
+      } catch (error) {
+        console.error('获取 meme 代币信息失败:', error);
+      }
+    };
+
+    fetchMemeTokenInfo();
+  }, [symbol, systemTokenInfo, systemTokenLoading]);
+
+  // 当前代币信息（优先使用系统代币，其次是 meme 代币）
+  const currentTokenInfo = systemTokenInfo || memeTokenInfo;
+  
+  // 获取代币小数位数
+  const getTokenDecimals = (tokenSymbol: string) => {
+    if ((tokenSymbol === "ETH" || tokenSymbol === "WETH") && ethInfo) return ethInfo.decimals;
+    if (tokenSymbol === symbol && currentTokenInfo) return currentTokenInfo.decimals;
+    // 默认值：ETH/WETH 18位，其他 18位
+    return 18;
+  };
 
   const {
     isLoading,
@@ -34,32 +82,37 @@ export default function TradingPanel({ symbol = "KEKE", currentPrice = "0.42814"
   } = useTrading();
 
   // 获取代币余额
-  const { data: kekeBalance } = useTokenBalance(symbol);
-  const { data: usdtBalance } = useTokenBalance("USDT");
+  const { data: tokenBalance } = useTokenBalance(symbol);
+  const { data: ethBalance } = useTokenBalance("WETH");
+  
+  // 动态获取路由地址
+  const routerAddress = useKekeswapRouterAddress();
   
   // 获取授权状态
-  const { data: usdtAllowance } = useTokenAllowance("USDT", "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9"); // Router地址
-  const { data: kekeAllowance } = useTokenAllowance(symbol, "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9");
+  const { data: ethAllowance } = useTokenAllowance("WETH", routerAddress || "0x0");
+  const { data: tokenAllowance } = useTokenAllowance(symbol, routerAddress || "0x0");
 
-  // 格式化余额显示
-  const formatBalance = (balance: unknown) => {
+  // 格式化余额显示 - 使用正确的小数位数
+  const formatBalance = (balance: unknown, tokenSymbol: string) => {
     if (!balance || typeof balance !== 'bigint') return "0.00";
-    return parseFloat(formatUnits(balance, 18)).toFixed(2);
+    const decimals = getTokenDecimals(tokenSymbol);
+    return parseFloat(formatUnits(balance, decimals)).toFixed(decimals === 6 ? 6 : 4);
   };
 
   const balances = {
-    KEKE: formatBalance(kekeBalance),
-    USDT: formatBalance(usdtBalance),
+    [symbol]: formatBalance(tokenBalance, symbol),
+    ETH: formatBalance(ethBalance, "WETH"),
   };
 
   // 检查是否需要授权
   useEffect(() => {
-    if (buyAmount && usdtAllowance && typeof usdtAllowance === 'bigint') {
-      const totalUSDT = parseFloat(buyAmount) * parseFloat(buyPrice);
-      const allowanceFormatted = parseFloat(formatUnits(usdtAllowance, 18));
-      setNeedsApproval(totalUSDT > allowanceFormatted);
+    if (buyAmount && ethAllowance && typeof ethAllowance === 'bigint') {
+      const totalETH = parseFloat(buyAmount) * parseFloat(buyPrice);
+      const ethDecimals = getTokenDecimals("WETH");
+      const allowanceFormatted = parseFloat(formatUnits(ethAllowance, ethDecimals));
+      setNeedsApproval(totalETH > allowanceFormatted);
     }
-  }, [buyAmount, buyPrice, usdtAllowance]);
+  }, [buyAmount, buyPrice, ethAllowance, getTokenDecimals]);
 
   const calculateTotal = (amount: string, price: string) => {
     const numAmount = parseFloat(amount) || 0;
@@ -72,26 +125,28 @@ export default function TradingPanel({ symbol = "KEKE", currentPrice = "0.42814"
     
     // 如果需要授权，先执行授权
     if (needsApproval) {
-      const totalUSDT = (parseFloat(buyAmount) * parseFloat(buyPrice)).toString();
-      const approved = await approveToken("USDT", totalUSDT);
+      const totalETH = (parseFloat(buyAmount) * parseFloat(buyPrice)).toString();
+      const approved = await approveToken("WETH", totalETH);
       if (!approved) return;
     }
 
-    // 执行买入
-    await executeBuy({
-      tokenSymbol: symbol,
-      amount: buyAmount,
-      price: buyPrice,
-      type: 'buy'
-    });
+          // 执行买入
+      await executeBuy({
+        tokenSymbol: symbol,
+        systemTokenInfo: systemTokenInfo,
+        amount: buyAmount,
+        price: buyPrice,
+        type: 'buy'
+      });
   };
 
   const handleSell = async () => {
     if (!sellAmount || !sellPrice) return;
 
-    // 检查KEKE授权
-    if (kekeAllowance && typeof kekeAllowance === 'bigint') {
-      const allowanceFormatted = parseFloat(formatUnits(kekeAllowance, 18));
+    // 检查代币授权
+    if (tokenAllowance && typeof tokenAllowance === 'bigint') {
+      const tokenDecimals = getTokenDecimals(symbol);
+      const allowanceFormatted = parseFloat(formatUnits(tokenAllowance, tokenDecimals));
       if (parseFloat(sellAmount) > allowanceFormatted) {
         const approved = await approveToken(symbol, sellAmount);
         if (!approved) return;
@@ -101,6 +156,7 @@ export default function TradingPanel({ symbol = "KEKE", currentPrice = "0.42814"
     // 执行卖出
     await executeSell({
       tokenSymbol: symbol,
+      systemTokenInfo: systemTokenInfo,
       amount: sellAmount,
       price: sellPrice,
       type: 'sell'
@@ -113,8 +169,13 @@ export default function TradingPanel({ symbol = "KEKE", currentPrice = "0.42814"
         <CardTitle className="text-lg">现货交易</CardTitle>
         <div className="flex gap-2 text-sm">
           <span className="text-gray-400">可用余额:</span>
-          <span>{symbol}: {balances.KEKE}</span>
-          <span>USDT: {balances.USDT}</span>
+          <span>{symbol}: {balances[symbol]}</span>
+          <span>ETH: {balances.ETH}</span>
+          {!currentTokenInfo && (
+            <Badge variant="outline" className="text-xs text-yellow-400 border-yellow-400">
+              代币信息加载中...
+            </Badge>
+          )}
         </div>
       </CardHeader>
       <CardContent>
@@ -132,7 +193,7 @@ export default function TradingPanel({ symbol = "KEKE", currentPrice = "0.42814"
           <TabsContent value="buy" className="space-y-4 mt-6">
             <div className="space-y-3">
               <div>
-                <label className="text-sm text-gray-400 mb-2 block">价格 (USDT)</label>
+                <label className="text-sm text-gray-400 mb-2 block">价格 (ETH)</label>
                 <Input
                   type="number"
                   value={buyPrice}
@@ -150,46 +211,12 @@ export default function TradingPanel({ symbol = "KEKE", currentPrice = "0.42814"
                   onChange={(e) => setBuyAmount(e.target.value)}
                   className="bg-gray-800 border-gray-600 text-white"
                   placeholder="0.00"
-                />
-                <div className="flex gap-2 mt-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700"
-                    onClick={() => setBuyAmount((parseFloat(balances.USDT) * 0.25 / parseFloat(buyPrice)).toFixed(2))}
-                  >
-                    25%
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700"
-                    onClick={() => setBuyAmount((parseFloat(balances.USDT) * 0.5 / parseFloat(buyPrice)).toFixed(2))}
-                  >
-                    50%
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700"
-                    onClick={() => setBuyAmount((parseFloat(balances.USDT) * 0.75 / parseFloat(buyPrice)).toFixed(2))}
-                  >
-                    75%
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700"
-                    onClick={() => setBuyAmount((parseFloat(balances.USDT) / parseFloat(buyPrice)).toFixed(2))}
-                  >
-                    最大
-                  </Button>
-                </div>
+                />                
               </div>
 
               <div className="bg-gray-800 p-3 rounded-lg">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-400">总计 (USDT)</span>
+                  <span className="text-gray-400">总计 (ETH)</span>
                   <span className="text-white">{calculateTotal(buyAmount, buyPrice)}</span>
                 </div>
                 <div className="flex justify-between text-sm mt-1">
@@ -212,7 +239,7 @@ export default function TradingPanel({ symbol = "KEKE", currentPrice = "0.42814"
           <TabsContent value="sell" className="space-y-4 mt-6">
             <div className="space-y-3">
               <div>
-                <label className="text-sm text-gray-400 mb-2 block">价格 (USDT)</label>
+                <label className="text-sm text-gray-400 mb-2 block">价格 (ETH)</label>
                 <Input
                   type="number"
                   value={sellPrice}
@@ -236,7 +263,7 @@ export default function TradingPanel({ symbol = "KEKE", currentPrice = "0.42814"
                     variant="outline"
                     size="sm"
                     className="bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700"
-                    onClick={() => setSellAmount((parseFloat(balances.KEKE) * 0.25).toFixed(2))}
+                    onClick={() => setSellAmount((parseFloat(balances[symbol]) * 0.25).toFixed(4))}
                   >
                     25%
                   </Button>
@@ -244,7 +271,7 @@ export default function TradingPanel({ symbol = "KEKE", currentPrice = "0.42814"
                     variant="outline"
                     size="sm"
                     className="bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700"
-                    onClick={() => setSellAmount((parseFloat(balances.KEKE) * 0.5).toFixed(2))}
+                    onClick={() => setSellAmount((parseFloat(balances[symbol]) * 0.5).toFixed(4))}
                   >
                     50%
                   </Button>
@@ -252,7 +279,7 @@ export default function TradingPanel({ symbol = "KEKE", currentPrice = "0.42814"
                     variant="outline"
                     size="sm"
                     className="bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700"
-                    onClick={() => setSellAmount((parseFloat(balances.KEKE) * 0.75).toFixed(2))}
+                    onClick={() => setSellAmount((parseFloat(balances[symbol]) * 0.75).toFixed(4))}
                   >
                     75%
                   </Button>
@@ -260,7 +287,7 @@ export default function TradingPanel({ symbol = "KEKE", currentPrice = "0.42814"
                     variant="outline"
                     size="sm"
                     className="bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700"
-                    onClick={() => setSellAmount(balances.KEKE)}
+                    onClick={() => setSellAmount(balances[symbol])}
                   >
                     最大
                   </Button>
@@ -269,7 +296,7 @@ export default function TradingPanel({ symbol = "KEKE", currentPrice = "0.42814"
 
               <div className="bg-gray-800 p-3 rounded-lg">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-400">总计 (USDT)</span>
+                  <span className="text-gray-400">总计 (ETH)</span>
                   <span className="text-white">{calculateTotal(sellAmount, sellPrice)}</span>
                 </div>
                 <div className="flex justify-between text-sm mt-1">

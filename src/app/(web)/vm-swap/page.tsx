@@ -119,7 +119,7 @@ export default function VMSwapPage() {
         {/* 右侧：交易面板和订单簿 */}
         <div className="col-span-4 space-y-6">
           {/* 交易面板 */}
-          <TradingPanel symbol="KEKE" currentPrice={currentPrice} />
+          <TradingPanel symbol="333" currentPrice={currentPrice} />
         </div>
         
       </div>
