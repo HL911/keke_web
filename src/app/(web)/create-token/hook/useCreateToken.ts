@@ -1,3 +1,5 @@
+'use client'
+
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { useTokenFactory, type CreateTokenResult } from '@/hooks/launchPool/useTokenFactory';

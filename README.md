@@ -72,6 +72,60 @@ keke_web/
 └── 📄 tsconfig.json                # TypeScript配置
 ```
 
+## 📡 WebSocket K线数据服务
+
+项目提供实时K线数据WebSocket服务，支持多交易对、多时间间隔的K线数据推送。
+
+### 🌟 功能特性
+
+- **实时数据推送**: 支持30秒、1分钟、5分钟等多种时间间隔
+- **多交易对订阅**: 同时订阅多个交易对的K线数据
+- **自动心跳检测**: 保持连接稳定性
+- **错误恢复机制**: 自动重连和订阅恢复
+
+### 🚀 快速使用
+
+```javascript
+// 连接WebSocket服务
+const ws = new WebSocket('ws://localhost:8081/kline-ws');
+
+// 订阅K线数据
+ws.onopen = function() {
+  ws.send(JSON.stringify({
+    type: 'subscribe',
+    data: {
+      network: 'ethereum',
+      pairAddress: '0x1234567890abcdef1234567890abcdef12345678',
+      intervals: ['1m', '5m']
+    }
+  }));
+};
+
+// 接收K线数据
+ws.onmessage = function(event) {
+  const msg = JSON.parse(event.data);
+  if (msg.type === 'kline_update') {
+    console.log('K线数据:', msg.data);
+  }
+};
+```
+
+### 🛠 开发环境启动
+
+```bash
+# 启动K线生成服务（包含WebSocket服务器）
+npx ts-node src/test/start-kline-for-pair.ts
+
+# 使用测试客户端验证连接
+node src/test/websocket-test-client.js
+```
+
+## 📚 完整文档
+
+- 📖 **[API接口文档](./docs/api-documentation.md)** - 完整的REST API和WebSocket接口文档
+- 🔌 **[WebSocket使用指南](./docs/websocket-usage-guide.md)** - K线数据WebSocket服务详细使用说明
+- 📋 **[项目文档中心](./docs/README.md)** - 所有技术文档的索引页面
+
 ## 🚀 快速开始
 
 ### 环境要求
