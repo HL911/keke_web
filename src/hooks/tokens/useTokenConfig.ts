@@ -110,7 +110,7 @@ export function useTokenConfig(symbol?: string): TokenConfigHook {
     setError(null);
 
     try {
-      const response = await fetch(`/api/tokens?symbol=${symbol}`);
+      const response = await fetch(`/api/tokens?symbol=${symbol}&action=get`);
       const result = await response.json();
 
       if (result.success) {

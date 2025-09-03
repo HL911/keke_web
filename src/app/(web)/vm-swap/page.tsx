@@ -15,14 +15,14 @@ export default function VMSwapPage() {
   
   // 获取代币配置
   const kekeConfig = useTokenConfig('KEKE');
-  const usdtConfig = useTokenConfig('USDT');
+  const ethConfig = useTokenConfig('WETH'); // 使用WETH作为基础交易对
   
   // 获取交易对信息
   const pairInfo = usePairInfo({
     token0Symbol: 'KEKE',
-    token1Symbol: 'USDT',
+    token1Symbol: 'WETH',
     token0Address: kekeConfig.tokenInfo?.address,
-    token1Address: usdtConfig.tokenInfo?.address,
+    token1Address: ethConfig.tokenInfo?.address,
   });
 
   // 使用真实数据或回退到默认值
@@ -47,7 +47,7 @@ export default function VMSwapPage() {
                   <span className="text-white font-bold text-sm">K</span>
                 </div>
                 <div>
-                  <h1 className="text-xl font-bold">KEKE/USDT</h1>
+                  <h1 className="text-xl font-bold">KEKE/ETH</h1>
                   <p className="text-sm text-gray-400">KEKE Token</p>
                 </div>
               </div>
@@ -55,7 +55,7 @@ export default function VMSwapPage() {
               <div className="flex items-center gap-6">
                 <div className="text-center">
                   <div className="text-2xl font-bold">
-                    ${currentPrice}
+                    {currentPrice} ETH
                     {pairInfo.isLoading && (
                       <span className="ml-2 text-sm text-gray-400">(加载中...)</span>
                     )}
@@ -99,6 +99,11 @@ export default function VMSwapPage() {
               <Badge variant="outline" className="border-blue-400 text-blue-400">
                 DEX
               </Badge>
+              {address && (
+                <Badge variant="outline" className="border-yellow-400 text-yellow-400">
+                  已连接
+                </Badge>
+              )}
             </div>
           </div>
         </div>
@@ -109,24 +114,25 @@ export default function VMSwapPage() {
         {/* 左侧：图表区域 */}
         <div className="col-span-8">
           {/* <TradingChart 
-            symbol="KEKE/USDT" 
+            symbol="KEKE/ETH" 
             tokenName="KEKE" 
             pairAddress={pairInfo.pairAddress || "0x742d35Cc6861C4C687b12F1C3e56b12e9E3CCD0C"}
             network="ethereum"
           /> */}
-          
         </div>
         {/* 右侧：交易面板和订单簿 */}
         <div className="col-span-4 space-y-6">
           {/* 交易面板 */}
-          <TradingPanel symbol="KEKE" currentPrice={currentPrice} />
+          <TradingPanel symbol="333" currentPrice={currentPrice} />
+          
+          {/* 订单簿 */}
+          
         </div>
         
       </div>
-      {/* 订单簿 */}
-      <OrderBook />
       {/* Toast notifications */}
       <Toaster position="top-right" />
+      <OrderBook />
     </div>
   );
 }
