@@ -128,7 +128,16 @@ export default function TradingChart({
   }, [seriesType]);
 
   // WebSocket 连接
-  const { isConnected, isConnecting, connect, subscribe } = useWebSocket({
+  const { 
+    isConnected, 
+    isConnecting, 
+    hasReachedMaxRetries,
+    reconnectAttempts,
+    maxReconnectAttempts,
+    connect, 
+    subscribe,
+    resetRetryState
+  } = useWebSocket({
     onKlineUpdate: handleKlineUpdate,
     onConnect: () => {
       console.log('WebSocket 已连接');
@@ -428,20 +437,51 @@ export default function TradingChart({
                     ? 'border-green-400 text-green-400' 
                     : isConnecting 
                     ? 'border-yellow-400 text-yellow-400'
+                    : hasReachedMaxRetries
+                    ? 'border-red-500 text-red-500'
                     : 'border-red-400 text-red-400'
                 }`}
                 title={
-                  connectionError 
-                    ? `连接错误: ${connectionError}` 
+                  hasReachedMaxRetries
+                    ? `连接失败: 已达到最大重试次数 (${maxReconnectAttempts} 次)`
+                    : connectionError 
+                    ? `连接错误: ${connectionError} (重试: ${reconnectAttempts}/${maxReconnectAttempts})` 
                     : wsConnected 
                     ? '实时数据连接正常' 
                     : isConnecting 
-                    ? '正在连接 WebSocket...' 
+                    ? `正在连接 WebSocket... (尝试: ${reconnectAttempts + 1}/${maxReconnectAttempts})` 
                     : '未连接到实时数据源'
                 }
               >
-                {wsConnected ? '实时数据' : isConnecting ? '连接中...' : connectionError ? '连接失败' : externalData ? '静态数据' : '离线'}
+                {wsConnected 
+                  ? '实时数据' 
+                  : isConnecting 
+                  ? `连接中... (${reconnectAttempts + 1}/${maxReconnectAttempts})` 
+                  : hasReachedMaxRetries
+                  ? '重试已耗尽'
+                  : connectionError 
+                  ? `连接失败 (${reconnectAttempts}/${maxReconnectAttempts})` 
+                  : externalData 
+                  ? '静态数据' 
+                  : '离线'
+                }
               </Badge>
+              
+              {/* 手动重试按钮 */}
+              {hasReachedMaxRetries && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs h-6 px-2 border-blue-400 text-blue-400 hover:bg-blue-400 hover:text-white"
+                  onClick={() => {
+                    resetRetryState();
+                    connect();
+                  }}
+                  title="重置重试状态并尝试重新连接"
+                >
+                  手动重试
+                </Button>
+              )}
               <div className="flex gap-2">
                 <Button variant="ghost" size="sm" className="text-green-400 hover:text-green-300">
                   买入

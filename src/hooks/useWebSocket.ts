@@ -51,7 +51,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     onError,
     autoReconnect = true,
     reconnectInterval = 5000,
-    maxReconnectAttempts = 10
+    maxReconnectAttempts = 5  // 限制重试次数不超过5次
   } = options;
 
   const wsRef = useRef<WebSocket | null>(null);
@@ -61,6 +61,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
   
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [hasReachedMaxRetries, setHasReachedMaxRetries] = useState(false);
 
   // 发送消息
   const sendMessage = useCallback((message: WSMessage) => {
@@ -155,6 +156,14 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
       return; // 已经连接
     }
 
+    // 检查是否已达到最大重试次数
+    if (hasReachedMaxRetries) {
+      console.warn(`WebSocket 连接被阻止: 已达到最大重试次数 (${maxReconnectAttempts} 次)`);
+      const retryLimitError = new Error(`连接被阻止: 已达到最大重试次数 (${maxReconnectAttempts} 次)，请手动重试或检查服务器状态`);
+      onError?.(retryLimitError);
+      return;
+    }
+
     // 检查 WebSocket 是否可用
     if (typeof WebSocket === 'undefined') {
       const error = new Error('WebSocket 不可用 - 可能运行在服务器端环境');
@@ -185,7 +194,10 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
         console.log('WebSocket 连接成功:', url);
         setIsConnected(true);
         setIsConnecting(false);
+        
+        // 重置重试状态
         reconnectAttemptsRef.current = 0;
+        setHasReachedMaxRetries(false);
         
         // 启动心跳
         startHeartbeat();
@@ -273,14 +285,23 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
         
         onDisconnect?.();
         
-        // 智能重连策略
-        if (autoReconnect && shouldReconnect && reconnectAttemptsRef.current < maxReconnectAttempts) {
-          reconnectAttemptsRef.current++;
-          const backoffDelay = reconnectInterval * Math.pow(1.5, reconnectAttemptsRef.current - 1); // 指数退避
-          console.log(`尝试重连 (${reconnectAttemptsRef.current}/${maxReconnectAttempts}) 延迟 ${backoffDelay}ms`);
-          setTimeout(() => {
-            connect();
-          }, Math.min(backoffDelay, 30000)); // 最大延迟30秒
+        // 智能重连策略 - 限制重试次数不超过5次
+        if (autoReconnect && shouldReconnect) {
+          if (reconnectAttemptsRef.current < maxReconnectAttempts) {
+            reconnectAttemptsRef.current++;
+            const backoffDelay = reconnectInterval * Math.pow(1.5, reconnectAttemptsRef.current - 1); // 指数退避
+            console.log(`尝试重连 (${reconnectAttemptsRef.current}/${maxReconnectAttempts}) 延迟 ${Math.min(backoffDelay, 30000)}ms`);
+            setTimeout(() => {
+              connect();
+            }, Math.min(backoffDelay, 30000)); // 最大延迟30秒
+          } else {
+            // 达到最大重试次数
+            setHasReachedMaxRetries(true);
+            const maxRetriesError = new Error(`WebSocket 重连失败: 已达到最大重试次数 (${maxReconnectAttempts} 次)`);
+            console.error('WebSocket 重连失败:', maxRetriesError.message);
+            console.warn('请检查网络连接或 WebSocket 服务器状态');
+            onError?.(maxRetriesError);
+          }
         }
       };
 
@@ -324,7 +345,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
       setIsConnecting(false);
       onError?.(connectionError);
     }
-  }, [url, onKlineUpdate, onConnect, onDisconnect, onError, autoReconnect, reconnectInterval, maxReconnectAttempts, startHeartbeat, stopHeartbeat, resubscribe]);
+  }, [url, onKlineUpdate, onConnect, onDisconnect, onError, autoReconnect, reconnectInterval, maxReconnectAttempts, hasReachedMaxRetries, startHeartbeat, stopHeartbeat, resubscribe]);
 
   // 断开连接
   const disconnect = useCallback(() => {
@@ -337,6 +358,13 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     setIsConnecting(false);
   }, [stopHeartbeat]);
 
+  // 重置重试状态 - 手动重置重试计数器，允许重新尝试连接
+  const resetRetryState = useCallback(() => {
+    console.log('手动重置 WebSocket 重试状态');
+    reconnectAttemptsRef.current = 0;
+    setHasReachedMaxRetries(false);
+  }, []);
+
   // 组件卸载时清理
   useEffect(() => {
     return () => {
@@ -348,10 +376,14 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     // 状态
     isConnected,
     isConnecting,
+    hasReachedMaxRetries,
+    reconnectAttempts: reconnectAttemptsRef.current,
+    maxReconnectAttempts,
     
     // 连接管理
     connect,
     disconnect,
+    resetRetryState,
     
     // 订阅管理
     subscribe,
