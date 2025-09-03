@@ -13,6 +13,7 @@ import { useTokenConfig } from '@/hooks/tokens/useTokenConfig';
 import { useKekeswapRouterAddress } from '@/hooks/useContract';
 import { formatUnits } from 'viem';
 import { toast } from 'sonner';
+import sepoliaAddresses from '@/config/address/sepolia.json'
 
 interface TradingPanelProps {
   symbol?: string;
@@ -26,52 +27,16 @@ export default function TradingPanel({ symbol = "KEKE", currentPrice = "0.42814"
   const [buyPrice, setBuyPrice] = useState(currentPrice);
   const [sellPrice, setSellPrice] = useState(currentPrice);
   const [needsApproval, setNeedsApproval] = useState(false);
-  const [memeTokenInfo, setMemeTokenInfo] = useState<any>(null);
 
-  // 获取系统代币信息
-  const { tokenInfo: systemTokenInfo, loading: systemTokenLoading } = useTokenConfig(symbol);
   // 获取 ETH 信息（交易对）
   const { tokenInfo: ethInfo } = useTokenConfig("WETH");
-
-  // 如果不是系统代币，尝试从 meme 代币获取
-  useEffect(() => {
-    const fetchMemeTokenInfo = async () => {
-      if (systemTokenInfo || systemTokenLoading) return; // 如果已经找到系统代币，不需要查询 meme 代币
-      
-      try {
-        // 先尝试通过 symbol 搜索
-        const searchResponse = await fetch(`/api/meme-tokens?action=search&search=${symbol}`);
-        const searchResult = await searchResponse.json();
-        if (searchResult.success && searchResult.data.tokens.length > 0) {
-          // 找到匹配的 meme 代币
-          const exactMatch = searchResult.data.tokens.find((token: any) => {
-            return token.symbol.toLowerCase() === symbol.toLowerCase()
-          }                        
-          );
-          
-          if (exactMatch) {
-            setMemeTokenInfo(exactMatch);
-            console.log('找到 meme 代币:', exactMatch);
-          }
-        }
-      } catch (error) {
-        console.error('获取 meme 代币信息失败:', error);
-      }
-    };
-
-    fetchMemeTokenInfo();
-  }, [symbol, systemTokenInfo, systemTokenLoading]);
-
-  // 当前代币信息（优先使用系统代币，其次是 meme 代币）
-  const currentTokenInfo = systemTokenInfo || memeTokenInfo;
   
   // 获取代币小数位数
   const getTokenDecimals = useCallback((tokenSymbol: string) => {
-    if ((tokenSymbol === "ETH" || tokenSymbol === "WETH") && ethInfo) return ethInfo.decimals;
-    if (tokenSymbol === symbol && currentTokenInfo) return currentTokenInfo.decimals;
+    if ((tokenSymbol === "ETH" || tokenSymbol === "WETH") && ethInfo) return ethInfo.decimals;    
     // 默认值：ETH/WETH 18位，其他 18位
     return 18;
-  }, [ethInfo, symbol, currentTokenInfo]);
+  }, [ethInfo, symbol]);
 
   const {
     isLoading,
@@ -80,16 +45,37 @@ export default function TradingPanel({ symbol = "KEKE", currentPrice = "0.42814"
     isConfirmed,
     shouldUseNativeETH,
     useTokenBalance,
+    useMemeTokenBalance,
+    registerMemeTokenRefresh,
     useTokenAllowance,
     approveToken,
     executeBuy,
     executeSell,
     refreshBalances,
+    // Meme 代币相关
+    memeTokenInfo,
+    memeTokenLoading,
+    fetchMemeTokenInfo,
+    getTokenInfo,
   } = useTrading();
 
-  // 获取代币余额
-  const { data: tokenBalance, refetch: refetchTokenBalance } = useTokenBalance(symbol);
+  // 获取 meme 代币信息
+  useEffect(() => {
+    fetchMemeTokenInfo(symbol);
+  }, [symbol, fetchMemeTokenInfo]);
+
+  // 获取代币余额 - 只处理 meme 代币和 ETH
+  const tokenBalanceQuery = useMemeTokenBalance(memeTokenInfo?.address, symbol)    
+
+  const { data: tokenBalance, refetch: refetchTokenBalance } = tokenBalanceQuery;
   const { data: ethBalance, refetch: refetchETHBalance } = useTokenBalance("WETH");
+
+  // 注册 meme 代币余额刷新
+  useEffect(() => {
+    if (memeTokenInfo?.address && refetchTokenBalance) {
+      registerMemeTokenRefresh(symbol, memeTokenInfo.address, refetchTokenBalance);
+    }
+  }, [memeTokenInfo?.address, symbol, refetchTokenBalance, registerMemeTokenRefresh]);
   
   // 动态获取路由地址
   const routerAddress = useKekeswapRouterAddress();
@@ -157,11 +143,7 @@ export default function TradingPanel({ symbol = "KEKE", currentPrice = "0.42814"
       toast.error('请输入买入数量和价格');
       return;
     }
-    
-    if (!currentTokenInfo) {
-      toast.error('代币信息加载中，请稍候重试');
-      return;
-    }
+       
 
     try {
       // 如果需要授权，先执行授权
@@ -178,17 +160,17 @@ export default function TradingPanel({ symbol = "KEKE", currentPrice = "0.42814"
 
       console.log('🛒 开始买入交易:', {
         symbol,
-        currentTokenInfo,
+        memeTokenInfo,        
         buyAmount,
         buyPrice,
         needsApproval,
         shouldUseNativeETH,
       });
       
-      // 执行买入 - 统一使用 currentTokenInfo
+      // 执行买入 - 统一使用 ETH
       const success = await executeBuy({
         tokenSymbol: symbol,
-        systemTokenInfo: currentTokenInfo,
+        memeTokenInfo,
         amount: buyAmount,
         price: buyPrice,
         type: 'buy'
@@ -212,12 +194,7 @@ export default function TradingPanel({ symbol = "KEKE", currentPrice = "0.42814"
     if (!sellAmount || !sellPrice) {
       toast.error('请输入卖出数量和价格');
       return;
-    }
-    
-    if (!currentTokenInfo) {
-      toast.error('代币信息加载中，请稍候重试');
-      return;
-    }
+    }  
 
     try {
       // 检查余额是否足够
@@ -255,15 +232,15 @@ export default function TradingPanel({ symbol = "KEKE", currentPrice = "0.42814"
 
       console.log('💰 开始卖出交易:', {
         symbol,
-        currentTokenInfo,
+        memeTokenInfo,
         sellAmount,
         sellPrice,
       });
 
-      // 执行卖出 - 统一使用 currentTokenInfo
+      // 执行卖出 - 使用 meme 代币信息
       const success = await executeSell({
         tokenSymbol: symbol,
-        systemTokenInfo: currentTokenInfo,
+        memeTokenInfo,
         amount: sellAmount,
         price: sellPrice,
         type: 'sell'
@@ -294,12 +271,7 @@ export default function TradingPanel({ symbol = "KEKE", currentPrice = "0.42814"
             <span>{shouldUseNativeETH ? 'ETH' : 'WETH'}: {balances.ETH}</span>
           </div>
           
-          <div className="flex gap-2 items-center">
-            {!currentTokenInfo && (
-              <Badge variant="outline" className="text-xs text-yellow-400 border-yellow-400">
-                代币信息加载中...
-              </Badge>
-            )}
+          <div className="flex gap-2 items-center">            
             
             {shouldUseNativeETH && (
               <Badge variant="outline" className="text-xs text-blue-400 border-blue-400">
@@ -441,12 +413,10 @@ export default function TradingPanel({ symbol = "KEKE", currentPrice = "0.42814"
               <Button
                 onClick={handleBuy}
                 className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3"
-                disabled={!isConnected || !buyAmount || !buyPrice || isLoading || !currentTokenInfo}
+                disabled={!isConnected || !buyAmount || !buyPrice || isLoading }
               >
                 {!isConnected 
-                  ? "连接钱包" 
-                  : !currentTokenInfo
-                  ? "代币加载中..."
+                  ? "连接钱包"                                     
                   : isLoading || isConfirming
                   ? (isConfirming ? "确认中..." : "处理中...")
                   : needsApproval && !shouldUseNativeETH
@@ -553,12 +523,10 @@ export default function TradingPanel({ symbol = "KEKE", currentPrice = "0.42814"
               <Button
                 onClick={handleSell}
                 className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3"
-                disabled={!isConnected || !sellAmount || !sellPrice || isLoading || !currentTokenInfo || parseFloat(balances[symbol]) === 0}
+                disabled={!isConnected || !sellAmount || !sellPrice || isLoading || parseFloat(balances[symbol]) === 0}
               >
                 {!isConnected 
-                  ? "连接钱包" 
-                  : !currentTokenInfo
-                  ? "代币加载中..."
+                  ? "连接钱包"                   
                   : parseFloat(balances[symbol]) === 0
                   ? "余额不足"
                   : isLoading || isConfirming
