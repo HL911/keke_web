@@ -130,10 +130,15 @@ export default function TradingPanel({ symbol = "KEKE", currentPrice = "0.42814"
       if (!approved) return;
     }
 
+    console.log('买入----symbol', symbol)
+    console.log('memeTokenInfo', memeTokenInfo)
+    console.log('buyAmount', buyAmount)
+    console.log('buyPrice', buyPrice)
+    
           // 执行买入
       await executeBuy({
         tokenSymbol: symbol,
-        systemTokenInfo: systemTokenInfo,
+        systemTokenInfo: memeTokenInfo,
         amount: buyAmount,
         price: buyPrice,
         type: 'buy'
@@ -257,41 +262,7 @@ export default function TradingPanel({ symbol = "KEKE", currentPrice = "0.42814"
                   onChange={(e) => setSellAmount(e.target.value)}
                   className="bg-gray-800 border-gray-600 text-white"
                   placeholder="0.00"
-                />
-                <div className="flex gap-2 mt-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700"
-                    onClick={() => setSellAmount((parseFloat(balances[symbol]) * 0.25).toFixed(4))}
-                  >
-                    25%
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700"
-                    onClick={() => setSellAmount((parseFloat(balances[symbol]) * 0.5).toFixed(4))}
-                  >
-                    50%
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700"
-                    onClick={() => setSellAmount((parseFloat(balances[symbol]) * 0.75).toFixed(4))}
-                  >
-                    75%
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700"
-                    onClick={() => setSellAmount(balances[symbol])}
-                  >
-                    最大
-                  </Button>
-                </div>
+                />                
               </div>
 
               <div className="bg-gray-800 p-3 rounded-lg">
