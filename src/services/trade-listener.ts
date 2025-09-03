@@ -2,6 +2,7 @@ import { createPublicClient, http, webSocket, formatEther } from 'viem'
 import { sepolia, foundry } from 'viem/chains'
 import { insertTradeEvent } from "../app/api/utils/trade-events-queries"
 import { processTradeForKlines } from './kline'
+import { broadcastTradeUpdate } from './websocket-server'
 import poolAbi from '../abi/Pool.json'
 import sepoliaAddresses from '../config/address/sepolia.json'
 
@@ -144,10 +145,12 @@ async function saveTradeEvent(event: any) {
     await processTradeForKlines(klineTradeData)
     console.log(`K-line data processed for trade:`, event.transactionHash)
     
-
+    // 广播交易数据给WebSocket订阅者
+    broadcastTradeUpdate(tradeEventData)
+    console.log(`Trade data broadcasted via WebSocket:`, event.transactionHash)
     
   } catch (error) {
-    console.error('Error saving trade event or processing K-line:', error)
+    console.error('Error saving trade event, processing K-line, or broadcasting:', error)
   }
 }
 

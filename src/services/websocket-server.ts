@@ -35,7 +35,7 @@ const WEBSOCKET_OPEN = 1;
 
 // WebSocket消息类型定义
 export interface WSMessage {
-  type: 'subscribe' | 'unsubscribe' | 'kline_update' | 'ping' | 'pong' | 'error';
+  type: 'subscribe' | 'unsubscribe' | 'kline_update' | 'trade_update' | 'ping' | 'pong' | 'error';
   data?: any;
   timestamp?: number;
 }
@@ -317,6 +317,62 @@ export class KlineWebSocketServer {
   }
 
   /**
+   * 广播交易数据给所有订阅的客户端
+   */
+  public broadcastTradeUpdate(tradeData: any): void {
+    console.log(`[DEBUG] broadcastTradeUpdate called for ${tradeData.network}:${tradeData.token_address}`);
+    console.log(`[DEBUG] Server running: ${this.isRunning}`);
+    
+    if (!this.isRunning) return;
+    
+    try {
+      const message: WSMessage = {
+        type: 'trade_update',
+        data: {
+          network: tradeData.network,
+          pairAddress: tradeData.token_address,
+          trade: {
+            txHash: tradeData.tx_hash,
+            userAddress: tradeData.user_address,
+            tokenAmount: tradeData.token_amount,
+            ethAmount: tradeData.eth_amount,
+            tokenAddress: tradeData.token_address,
+            isBuy: tradeData.isBuy,
+            price: tradeData.price,
+            timestamp: tradeData.timestamp
+          }
+        },
+        timestamp: Date.now()
+      };
+
+      console.log(`[DEBUG] Total clients: ${this.clients.size}`);
+      
+      // 发送给所有订阅了该交易对的客户端
+      let sentCount = 0;
+      this.clients.forEach((client) => {
+        console.log(`[DEBUG] Client ${client.id} subscriptions:`, client.subscriptions);
+        
+        const hasSubscription = client.subscriptions.some(sub => 
+          sub.network === tradeData.network && sub.pairAddress === tradeData.token_address
+        );
+        
+        console.log(`[DEBUG] Client ${client.id} has subscription: ${hasSubscription}, readyState: ${client.ws.readyState}`);
+        
+        if (hasSubscription && client.ws.readyState === WEBSOCKET_OPEN) {
+          this.sendMessage(client, message);
+          sentCount++;
+          console.log(`[DEBUG] Sent trade_update to client ${client.id}`);
+        }
+      });
+      
+      console.log(`[DEBUG] Sent trade_update to ${sentCount} clients`);
+      
+    } catch (error) {
+      console.error('Error broadcasting trade update:', error);
+    }
+  }
+
+  /**
    * 广播K线更新给所有订阅的客户端
    */
   public broadcastKlineUpdate(network: string, pairAddress: string): void {
@@ -327,11 +383,7 @@ export class KlineWebSocketServer {
     
     try {
       const klineData = getCachedKlineData(network, pairAddress);
-      
-      console.log(`[DEBUG] Found ${klineData.length} kline records in cache`);
-      if (klineData.length > 0) {
-        console.log(`[DEBUG] Sample kline data:`, JSON.stringify(klineData[0], null, 2));
-      }
+
       
       if (klineData.length === 0) {
         console.log(`[DEBUG] No kline data to broadcast, returning`);
@@ -534,11 +586,13 @@ export function broadcastKlineUpdate(network: string, pairAddress: string): void
   console.log(`[DEBUG] broadcastKlineUpdate called for ${network}:${pairAddress}`);
   console.log(`[DEBUG] Found ${klineData.length} kline records in cache`);
   
-  if (klineData.length > 0) {
-    console.log(`[DEBUG] Sample kline data:`, JSON.stringify(klineData[0], null, 2));
-  }
   
   klineWebSocketServer.broadcastKlineUpdate(network, pairAddress);
+}
+
+export function broadcastTradeUpdate(tradeData: any): void {
+  console.log(`[DEBUG] broadcastTradeUpdate called for ${tradeData.network}:${tradeData.token_address}`);
+  klineWebSocketServer.broadcastTradeUpdate(tradeData);
 }
 
 export function getWebSocketServerStatus() {

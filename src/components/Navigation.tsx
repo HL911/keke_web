@@ -21,6 +21,7 @@ import {
   Check,
   Layers,
   Plus,
+  Monitor,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppKit } from "@reown/appkit/react";
@@ -64,6 +65,11 @@ export function Navigation() {
       title: "数据",
       href: "/analytics",
       icon: <BarChart3 className="w-4 h-4" />,
+    },
+    {
+      title: "交易监控",
+      href: "/trade-monitor",
+      icon: <Monitor className="w-4 h-4" />,
     },
   ];
 
