@@ -5,6 +5,7 @@ import { createChart, CandlestickData, Time, ColorType, IChartApi, ISeriesApi, C
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useWebSocket, KlineData } from '@/hooks/useWebSocket';
 
 interface TradingChartProps {
   symbol?: string;
@@ -12,6 +13,9 @@ interface TradingChartProps {
   data?: CandlestickData[];
   onCrosshairMove?: (param: any) => void;
   onClick?: (param: any) => void;
+  // WebSocket 配置
+  pairAddress?: string;
+  network?: string;
 }
 
 // 模拟 lightweight-charts-react-wrapper 的数据生成
@@ -47,7 +51,9 @@ export default function TradingChart({
   tokenName = "KEKE",
   data: externalData,
   onCrosshairMove,
-  onClick
+  onClick,
+  pairAddress = "0x123...", // 默认交易对地址，后续从配置中获取
+  network = "ethereum"
 }: TradingChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -59,6 +65,82 @@ export default function TradingChart({
     externalData || generateInitialData()
   );
   const [seriesType, setSeriesType] = useState<'candlestick' | 'line' | 'area' | 'mock'>('candlestick');
+  const [wsConnected, setWsConnected] = useState(false);
+
+  // WebSocket K线数据处理
+  const handleKlineUpdate = useCallback((klineData: KlineData) => {
+    // 将服务器的 K线数据转换为图表格式
+    const newCandlestick: CandlestickData = {
+      time: (new Date(klineData.timestamp).getTime() / 1000) as Time,
+      open: parseFloat(klineData.open_price),
+      high: parseFloat(klineData.high_price),
+      low: parseFloat(klineData.low_price),
+      close: parseFloat(klineData.close_price),
+    };
+
+    console.log('收到 K线数据:', newCandlestick);
+
+    // 更新图表数据
+    setChartData(prev => {
+      const updated = [...prev];
+      const lastIndex = updated.length - 1;
+      
+      // 如果是同一时间的数据，则更新最后一条；否则添加新数据
+      if (lastIndex >= 0 && updated[lastIndex].time === newCandlestick.time) {
+        updated[lastIndex] = newCandlestick;
+      } else {
+        updated.push(newCandlestick);
+        // 保持最多1000条数据
+        if (updated.length > 1000) {
+          updated.shift();
+        }
+      }
+      
+      return updated;
+    });
+
+    // 更新当前价格显示
+    setCurrentPrice(klineData.close_price);
+    setVolume(klineData.volume);
+    
+    // 更新图表系列
+    if (candlestickSeriesRef.current && typeof candlestickSeriesRef.current.update === 'function') {
+      try {
+        let updateData: any;
+        
+        if (seriesType === 'candlestick') {
+          updateData = newCandlestick;
+        } else if (seriesType === 'line' || seriesType === 'area') {
+          updateData = {
+            time: newCandlestick.time,
+            value: newCandlestick.close,
+          };
+        } else {
+          updateData = newCandlestick;
+        }
+        
+        candlestickSeriesRef.current.update(updateData);
+      } catch (error) {
+        console.error('更新图表数据失败:', error);
+      }
+    }
+  }, [seriesType]);
+
+  // WebSocket 连接
+  const { isConnected, isConnecting, connect, subscribe } = useWebSocket({
+    onKlineUpdate: handleKlineUpdate,
+    onConnect: () => {
+      console.log('WebSocket 已连接');
+      setWsConnected(true);
+    },
+    onDisconnect: () => {
+      console.log('WebSocket 已断开');
+      setWsConnected(false);
+    },
+    onError: (error) => {
+      console.error('WebSocket 错误:', error);
+    }
+  });
   // 类似 lightweight-charts-react-wrapper 的 Chart 组件功能
   const createChartInstance = useCallback(() => {
     if (!chartContainerRef.current) return null;
@@ -300,64 +382,32 @@ export default function TradingChart({
     }
   }, [externalData, updatePriceInfo]);
 
-  // 实时数据更新
+  // WebSocket 连接和订阅
   useEffect(() => {
-    const interval = setInterval(() => {
-      if (candlestickSeriesRef.current && !externalData) {
-        const lastTime = Math.floor(Date.now() / 1000) as Time;
-        const change = (Math.random() - 0.5) * 0.005;
-        const lastPrice = Number(currentPrice);
-        const newPrice = lastPrice * (1 + change);
-        
-        try {
-          // 根据实际的图表类型使用正确的数据格式
-          let updateData: any;
-          
-          if (seriesType === 'candlestick') {
-            // 蜡烛图需要 open, high, low, close
-            updateData = {
-              time: lastTime,
-              open: lastPrice,
-              high: Math.max(lastPrice, newPrice) * (1 + Math.random() * 0.001),
-              low: Math.min(lastPrice, newPrice) * (1 - Math.random() * 0.001),
-              close: newPrice,
-            };
-          } else if (seriesType === 'line' || seriesType === 'area') {
-            // 线条图和区域图只需要 value
-            updateData = {
-              time: lastTime,
-              value: newPrice,
-            };
-          } else if (seriesType === 'mock') {
-            // 模拟图表，任何格式都可以
-            updateData = {
-              time: lastTime,
-              value: newPrice,
-            };
-          }
+    // 如果提供了外部数据，不连接 WebSocket
+    if (externalData) {
+      return;
+    }
 
-          if (typeof candlestickSeriesRef.current?.update === 'function' && updateData) {
-            candlestickSeriesRef.current.update(updateData);
-            setCurrentPrice(newPrice.toFixed(5));
-            
-            // 更新内部数据状态（保持原有的蜡烛图格式用于价格计算）
-            const internalData = {
-              time: lastTime,
-              open: lastPrice,
-              high: Math.max(lastPrice, newPrice) * (1 + Math.random() * 0.001),
-              low: Math.min(lastPrice, newPrice) * (1 - Math.random() * 0.001),
-              close: newPrice,
-            };
-            setChartData(prev => [...prev.slice(-99), internalData]);
-          }
-        } catch (error) {
-          console.error('Error updating chart:', error);
-        }
-      }
-    }, 2000);
+    // 连接 WebSocket
+    connect();
 
-    return () => clearInterval(interval);
-  }, [currentPrice, externalData, seriesType]);
+    // 订阅 K线数据
+    const subscription = {
+      network,
+      pairAddress,
+      intervals: ['1m', '15m'] // 订阅 1分钟 和 15分钟 K线
+    };
+
+    // 延迟订阅，确保连接已建立
+    const timer = setTimeout(() => {
+      subscribe(subscription);
+    }, 1000);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [externalData, network, pairAddress, connect, subscribe]);
 
   return (
     <Card className="bg-black text-white border-gray-800">
@@ -365,13 +415,28 @@ export default function TradingChart({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <CardTitle className="text-xl">{symbol}</CardTitle>
-            <div className="flex gap-2">
-              <Button variant="ghost" size="sm" className="text-green-400 hover:text-green-300">
-                买入
-              </Button>
-              <Button variant="ghost" size="sm" className="text-red-400 hover:text-red-300">
-                卖出
-              </Button>
+            <div className="flex items-center gap-2">
+              {/* WebSocket 连接状态指示 */}
+              <Badge 
+                variant="outline" 
+                className={`text-xs ${
+                  wsConnected 
+                    ? 'border-green-400 text-green-400' 
+                    : isConnecting 
+                    ? 'border-yellow-400 text-yellow-400'
+                    : 'border-red-400 text-red-400'
+                }`}
+              >
+                {wsConnected ? '实时数据' : isConnecting ? '连接中...' : externalData ? '静态数据' : '离线'}
+              </Badge>
+              <div className="flex gap-2">
+                <Button variant="ghost" size="sm" className="text-green-400 hover:text-green-300">
+                  买入
+                </Button>
+                <Button variant="ghost" size="sm" className="text-red-400 hover:text-red-300">
+                  卖出
+                </Button>
+              </div>
             </div>
           </div>
           <div className="flex gap-2">

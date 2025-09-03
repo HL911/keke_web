@@ -9,7 +9,11 @@
     "lint": "eslint",
     "test:db": "tsx scripts/test-database.ts",
     "test:api": "tsx scripts/test-api.ts",
-    "test:functions": "tsx scripts/test-db-functions.ts"
+    "test:functions": "tsx scripts/test-db-functions.ts",
+    "seed-tokens": "tsx scripts/seed-tokens.ts",
+    "verify-config": "tsx scripts/verify-config.ts",
+    "check-config": "tsx scripts/check-and-fix-config.ts",
+    "test:integration": "tsx scripts/integration-test.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.1",

@@ -7,32 +7,33 @@ import { TrendingUp, TrendingDown, Volume2, Users, Activity } from "lucide-react
 import { useAccount } from "wagmi";
 import { Toaster } from "sonner";
 import { TradingChart, TradingPanel, OrderBook } from './components';
+import { usePairInfo } from '@/hooks/usePairInfo';
+import { useTokenConfig } from '@/hooks';
 
 export default function VMSwapPage() {
   const { address } = useAccount();
-  const [currentPrice, setCurrentPrice] = useState("0.42814");
-  const [priceChange, setPriceChange] = useState("+0.11%");
-  const [marketStats, setMarketStats] = useState({
-    volume24h: "$428.14M",
-    marketCap: "$806.3K",
-    holders: "1,245",
-    transactions: "8,932"
+  
+  // 获取代币配置
+  const kekeConfig = useTokenConfig('KEKE');
+  const usdtConfig = useTokenConfig('USDT');
+  
+  // 获取交易对信息
+  const pairInfo = usePairInfo({
+    token0Symbol: 'KEKE',
+    token1Symbol: 'USDT',
+    token0Address: kekeConfig.tokenInfo?.address,
+    token1Address: usdtConfig.tokenInfo?.address,
   });
 
-  // 模拟价格更新
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const basePrice = 0.42814;
-      const variation = (Math.random() - 0.5) * 0.002;
-      const newPrice = (basePrice * (1 + variation)).toFixed(5);
-      const change = ((parseFloat(newPrice) - basePrice) / basePrice * 100).toFixed(2);
-      
-      setCurrentPrice(newPrice);
-      setPriceChange(`${parseFloat(change) >= 0 ? '+' : ''}${change}%`);
-    }, 5000);
-
-    return () => clearInterval(interval);
-  }, []);
+  // 使用真实数据或回退到默认值
+  const currentPrice = pairInfo.currentPrice || "0.42814";
+  const priceChange = pairInfo.priceChange24h || "+0.11%";
+  const marketStats = {
+    volume24h: pairInfo.volume24h || "$428.14M",
+    marketCap: pairInfo.marketCap || "$806.3K",
+    holders: pairInfo.holders || "1,245",
+    transactions: "8,932" // 暂时保持模拟数据，后续可从API获取
+  };
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -53,7 +54,12 @@ export default function VMSwapPage() {
               
               <div className="flex items-center gap-6">
                 <div className="text-center">
-                  <div className="text-2xl font-bold">${currentPrice}</div>
+                  <div className="text-2xl font-bold">
+                    ${currentPrice}
+                    {pairInfo.isLoading && (
+                      <span className="ml-2 text-sm text-gray-400">(加载中...)</span>
+                    )}
+                  </div>
                   <div className={`text-sm flex items-center gap-1 ${priceChange.startsWith('+') ? 'text-green-400' : 'text-red-400'}`}>
                     {priceChange.startsWith('+') ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
                     {priceChange}
@@ -102,7 +108,12 @@ export default function VMSwapPage() {
       <div className="max-w-7xl mx-auto p-4 grid grid-cols-12 gap-6 ">
         {/* 左侧：图表区域 */}
         <div className="col-span-8">
-          <TradingChart symbol="KEKE/USDT" tokenName="KEKE" />
+          <TradingChart 
+            symbol="KEKE/USDT" 
+            tokenName="KEKE" 
+            pairAddress={pairInfo.pairAddress || "0x742d35Cc6861C4C687b12F1C3e56b12e9E3CCD0C"}
+            network="ethereum"
+          />
           
         </div>
         {/* 右侧：交易面板和订单簿 */}

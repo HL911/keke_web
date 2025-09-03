@@ -23,33 +23,45 @@ export function useTrading() {
   
   // 获取路由合约地址
   const routerAddress = useKekeswapRouterAddress();
+  
+  // 预加载常用代币配置
+  const kekeConfig = useTokenConfig('KEKE');
+  const usdtConfig = useTokenConfig('USDT');
+  
+  // 获取代币配置的辅助函数
+  const getTokenConfigBySymbol = useCallback((symbol: string) => {
+    if (symbol === 'KEKE') return kekeConfig.tokenInfo;
+    if (symbol === 'USDT') return usdtConfig.tokenInfo;
+    // 对于其他代币，需要在组件级别预加载或者使用API
+    return null;
+  }, [kekeConfig.tokenInfo, usdtConfig.tokenInfo]);
 
   // 获取代币余额
   const useTokenBalance = (tokenSymbol: string) => {
-    const { tokenConfig } = useTokenConfig(tokenSymbol);
+    const { tokenInfo } = useTokenConfig(tokenSymbol);
     
     return useReadContract({
-      address: tokenConfig?.address as `0x${string}`,
+      address: tokenInfo?.address as `0x${string}`,
       abi: KekeMockERC20_ABI,
       functionName: 'balanceOf',
       args: [address],
       query: {
-        enabled: !!address && !!tokenSymbol && !!tokenConfig?.address,
+        enabled: !!address && !!tokenSymbol && !!tokenInfo?.address,
       },
     });
   };
 
   // 获取代币授权额度
   const useTokenAllowance = (tokenSymbol: string, spender: string) => {
-    const { tokenConfig } = useTokenConfig(tokenSymbol);
+    const { tokenInfo } = useTokenConfig(tokenSymbol);
     
     return useReadContract({
-      address: tokenConfig?.address as `0x${string}`,
+      address: tokenInfo?.address as `0x${string}`,
       abi: KekeMockERC20_ABI,
       functionName: 'allowance',
       args: [address, spender],
       query: {
-        enabled: !!address && !!tokenSymbol && !!spender && !!tokenConfig?.address,
+        enabled: !!address && !!tokenSymbol && !!spender && !!tokenInfo?.address,
       },
     });
   };
@@ -65,20 +77,18 @@ export function useTrading() {
       setIsLoading(true);
       
       // 获取代币配置
-      const response = await fetch(`/api/contracts?symbol=${tokenSymbol}`);
-      const result = await response.json();
+      const tokenInfo = getTokenConfigBySymbol(tokenSymbol);
       
-      if (!result.success || !result.data) {
+      if (!tokenInfo?.address) {
         toast.error('获取代币配置失败');
         return false;
       }
       
-      const tokenConfig = result.data;
       const decimals = 18; // 大多数代币都是18位小数
       const amountWei = parseUnits(amount, decimals);
 
       await writeContract({
-        address: tokenConfig.address as `0x${string}`,
+        address: tokenInfo.address as `0x${string}`,
         abi: KekeMockERC20_ABI,
         functionName: 'approve',
         args: [routerAddress as `0x${string}`, amountWei],
@@ -93,7 +103,7 @@ export function useTrading() {
     } finally {
       setIsLoading(false);
     }
-  }, [isConnected, writeContract, routerAddress]);
+  }, [isConnected, writeContract, routerAddress, getTokenConfigBySymbol]);
 
   // 执行买入交易
   const executeBuy = useCallback(async (params: TradeParams) => {
@@ -111,21 +121,16 @@ export function useTrading() {
       const totalUSDTWei = parseUnits(totalUSDT.toString(), decimals);
 
       // 获取代币地址
-      const [tokenResponse, usdtResponse] = await Promise.all([
-        fetch(`/api/contracts?symbol=${tokenSymbol}`),
-        fetch(`/api/contracts?symbol=USDT`)
-      ]);
+      const tokenInfo = getTokenConfigBySymbol(tokenSymbol);
+      const usdtInfo = getTokenConfigBySymbol('USDT');
       
-      const tokenResult = await tokenResponse.json();
-      const usdtResult = await usdtResponse.json();
-      
-      if (!tokenResult.success || !usdtResult.success) {
+      if (!tokenInfo?.address || !usdtInfo?.address) {
         toast.error('获取代币地址失败');
         return false;
       }
 
-      const tokenInAddress = usdtResult.data.address; // USDT address
-      const tokenOutAddress = tokenResult.data.address; // KEKE address
+      const tokenInAddress = usdtInfo.address; // USDT address
+      const tokenOutAddress = tokenInfo.address; // 目标代币 address
       const path = [tokenInAddress, tokenOutAddress];
       const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20分钟后过期
 
@@ -151,12 +156,12 @@ export function useTrading() {
     } finally {
       setIsLoading(false);
     }
-  }, [isConnected, writeContract, address, routerAddress]);
+  }, [isConnected, writeContract, address, routerAddress, getTokenConfigBySymbol]);
 
   // 执行卖出交易
   const executeSell = useCallback(async (params: TradeParams) => {
-    if (!isConnected) {
-      toast.error('请先连接钱包');
+    if (!isConnected || !routerAddress) {
+      toast.error('请先连接钱包或等待加载完成');
       return false;
     }
 
@@ -168,9 +173,18 @@ export function useTrading() {
       const minUSDT = parseFloat(amount) * parseFloat(price) * 0.95; // 5%滑点保护
       const minUSDTWei = parseUnits(minUSDT.toString(), decimals);
 
+      // 获取代币地址
+      const tokenInfo = getTokenConfigBySymbol(tokenSymbol);
+      const usdtInfo = getTokenConfigBySymbol('USDT');
+      
+      if (!tokenInfo?.address || !usdtInfo?.address) {
+        toast.error('获取代币地址失败');
+        return false;
+      }
+
       // 卖出代币换取USDT
-      const tokenInAddress = '0x...'; // KEKE address
-      const tokenOutAddress = '0x...'; // USDT address
+      const tokenInAddress = tokenInfo.address; // 要卖出的代币 address
+      const tokenOutAddress = usdtInfo.address; // USDT address
       const path = [tokenInAddress, tokenOutAddress];
       const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
 
@@ -196,7 +210,7 @@ export function useTrading() {
     } finally {
       setIsLoading(false);
     }
-  }, [isConnected, writeContract, address]);
+  }, [isConnected, writeContract, address, routerAddress, getTokenConfigBySymbol]);
 
   // 获取交易对价格
   const getTokenPrice = useCallback(async (tokenSymbol: string) => {

@@ -19,6 +19,7 @@ export {
   useKekeswapRouterAddress,
   useKekeswapFactoryAddress,
 } from "./useContract";
+export { usePairInfo } from "./usePairInfo";
 
 // 导出类型
 export type {
