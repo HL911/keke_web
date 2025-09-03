@@ -11,11 +11,11 @@ interface DatabaseStats {
 }
 
 interface DatabaseData {
-  trading_pairs: Record<string, unknown>[];
-  tokens: Record<string, unknown>[];
-  transactions: Record<string, unknown>[];
-  user_positions: Record<string, unknown>[];
-  price_history: Record<string, unknown>[];
+  trading_pairs: any[];
+  tokens: any[];
+  transactions: any[];
+  user_positions: any[];
+  price_history: any[];
 }
 
 interface MonitorResponse {
@@ -55,7 +55,7 @@ export default function DatabaseMonitor() {
     }
   };
 
-  const formatValue = (value: unknown): string => {
+  const formatValue = (value: any): string => {
     if (value === null || value === undefined) return "N/A";
     if (typeof value === "boolean") return value ? "是" : "否";
     if (typeof value === "number") return value.toLocaleString();
@@ -66,7 +66,7 @@ export default function DatabaseMonitor() {
     return JSON.stringify(value);
   };
 
-  const renderTable = (tableData: Record<string, unknown>[], title: string) => {
+  const renderTable = (tableData: any[], title: string) => {
     if (!tableData || tableData.length === 0) {
       return (
         <div className="bg-gray-50 p-4 rounded-lg">
@@ -442,13 +442,13 @@ export default function DatabaseMonitor() {
               </div>
 
               {renderTable(
-                data.data.trading_pairs.slice(0, 10),
-                "最新交易对 (前10条)"
+                data.data.trading_pairs.slice(0, 5),
+                "最新交易对 (前5条)"
               )}
-              {renderTable(data.data.tokens.slice(0, 10), "最新代币 (前10条)")}
+              {renderTable(data.data.tokens.slice(0, 5), "最新代币 (前5条)")}
               {renderTable(
-                data.data.transactions.slice(0, 10),
-                "最新交易记录 (前10条)"
+                data.data.transactions.slice(0, 5),
+                "最新交易记录 (前5条)"
               )}
             </div>
           )}

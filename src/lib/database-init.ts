@@ -1,4 +1,4 @@
-import { initializeDatabase } from "../app/api/utils/db-core";
+import { initializeDatabase, healthCheck } from "../app/api/utils/sqlite-db";
 
 /**
  * 应用启动时的数据库初始化
@@ -10,7 +10,13 @@ export async function initDatabaseOnStartup() {
     // 初始化数据库（如果不存在会创建，如果存在会连接）
     await initializeDatabase();
 
-    console.log("✅ Database initialized successfully");
+    // 健康检查
+    const isHealthy = await healthCheck();
+    if (isHealthy) {
+      console.log("✅ Database initialized successfully and healthy");
+    } else {
+      console.error("❌ Database health check failed");
+    }
   } catch (error) {
     console.error("Failed to initialize database on startup:", error);
     // 在生产环境中，你可能想要在这里抛出错误或采取其他措施

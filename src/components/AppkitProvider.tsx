@@ -20,7 +20,7 @@ import { WagmiAdapter } from "@reown/appkit-adapter-wagmi";
 const queryClient = new QueryClient();
 
 // 1. Get projectId from https://cloud.reown.com
-const projectId = process.env.NEXT_PUBLIC_REOWN_PROJECT_ID || "";
+const projectId = "ebd23f3796f84e9c7cd73c16a966f990";
 
 // 2. 元数据在在钱包连接界面中显示 - Wallet Connect 扫码时将看到此信息
 const metadata = {
@@ -40,8 +40,8 @@ const customNetworks = {
     rpcUrls: {
       default: {
         http: [
-          process.env.NEXT_PUBLIC_RPC_URL_SEPOLIA_HTTPS_1 || "",
-          process.env.NEXT_PUBLIC_RPC_URL_SEPOLIA_HTTPS_2 || "",
+          "https://sepolia.infura.io/v3/53a58eac66a04d69bd2577334f365651",
+          "https://eth-sepolia.g.alchemy.com/v2/G46pa1JBnfNur5oZxYgm2",
         ],
       },
       public: {
