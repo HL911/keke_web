@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useCallback } from 'react';
-import { useAccount, useWriteContract, useReadContract, useBalance, useChainId } from 'wagmi';
+import { useState, useCallback, useRef } from 'react';
+import { useAccount, useWriteContract, useReadContract, useBalance, useChainId, useWaitForTransactionReceipt } from 'wagmi';
 import { parseUnits, formatUnits } from 'viem';
 import { toast } from 'sonner';
 import { useTokenConfig, useKekeswapRouterAddress } from '@/hooks';
@@ -20,9 +20,18 @@ export interface TradeParams {
 
 export function useTrading() {
   const { address, isConnected } = useAccount();
-  const { writeContract, isPending } = useWriteContract();
+  const { writeContract, isPending, data: hash } = useWriteContract();
   const [isLoading, setIsLoading] = useState(false);
+  const [transactionStatus, setTransactionStatus] = useState<'idle' | 'pending' | 'success' | 'error'>('idle');
   const chainId = useChainId();
+  
+  // 用于存储需要刷新的余额查询
+  const balanceRefreshCallbacks = useRef<Set<() => void>>(new Set());
+  
+  // 等待交易确认
+  const { isLoading: isConfirming, isSuccess: isConfirmed, isError: isTransactionError } = useWaitForTransactionReceipt({
+    hash,
+  });
   
   // 获取路由合约地址
   const routerAddress = useKekeswapRouterAddress();
@@ -84,19 +93,38 @@ export function useTrading() {
 
   // 获取代币余额
   const useTokenBalance = (tokenSymbol: string) => {
-    const { tokenInfo } = useTokenConfig(tokenSymbol);
+    const { tokenInfo, refetch } = useTokenConfig(tokenSymbol);
+    
+    // 注册刷新回调
+    if (refetch && !balanceRefreshCallbacks.current.has(refetch)) {
+      balanceRefreshCallbacks.current.add(refetch);
+    }
     
     // 如果是 ETH 且当前网络支持原生 ETH，返回原生 ETH 余额
     if ((tokenSymbol === 'ETH' || tokenSymbol === 'WETH') && shouldUseNativeETH()) {
+      // 原生ETH余额查询
+      const balanceQuery = useBalance({
+        address: address,
+        query: {
+          enabled: !!address,
+        },
+      });
+      
+      // 注册原生ETH余额刷新
+      if (balanceQuery.refetch && !balanceRefreshCallbacks.current.has(balanceQuery.refetch)) {
+        balanceRefreshCallbacks.current.add(balanceQuery.refetch);
+      }
+      
       return {
-        data: nativeETHBalance?.value,
-        isLoading: false,
-        error: null,
+        data: balanceQuery.data?.value,
+        isLoading: balanceQuery.isLoading,
+        error: balanceQuery.error,
+        refetch: balanceQuery.refetch,
       };
     }
     
     // 其他代币使用 ERC20 合约查询余额
-    return useReadContract({
+    const balanceQuery = useReadContract({
       address: tokenInfo?.address as `0x${string}`,
       abi: KekeMockERC20_ABI,
       functionName: 'balanceOf',
@@ -105,6 +133,13 @@ export function useTrading() {
         enabled: !!address && !!tokenSymbol && !!tokenInfo?.address,
       },
     });
+    
+    // 注册ERC20余额刷新
+    if (balanceQuery.refetch && !balanceRefreshCallbacks.current.has(balanceQuery.refetch)) {
+      balanceRefreshCallbacks.current.add(balanceQuery.refetch);
+    }
+    
+    return balanceQuery;
   };
 
   // 获取代币授权额度
@@ -117,6 +152,7 @@ export function useTrading() {
         data: BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'), // 最大值，表示不需要授权
         isLoading: false,
         error: null,
+        refetch: () => Promise.resolve(),
       };
     }
     
@@ -125,7 +161,7 @@ export function useTrading() {
       ? ethInfo.wethAddress 
       : getTokenConfigBySymbol(tokenSymbol)?.address;
     
-    return useReadContract({
+    const allowanceQuery = useReadContract({
       address: tokenAddress as `0x${string}`,
       abi: KekeMockERC20_ABI,
       functionName: 'allowance',
@@ -134,7 +170,30 @@ export function useTrading() {
         enabled: !!address && !!tokenSymbol && !!spender && !!tokenAddress,
       },
     });
+    
+    // 注册授权额度刷新
+    if (allowanceQuery.refetch && !balanceRefreshCallbacks.current.has(allowanceQuery.refetch)) {
+      balanceRefreshCallbacks.current.add(allowanceQuery.refetch);
+    }
+    
+    return allowanceQuery;
   };
+
+  // 刷新所有余额和授权额度
+  const refreshBalances = useCallback(async () => {
+    console.log('🔄 刷新所有余额和授权额度...');
+    const refreshPromises = Array.from(balanceRefreshCallbacks.current).map(callback => {
+      try {
+        return callback();
+      } catch (error) {
+        console.error('刷新余额失败:', error);
+        return Promise.resolve();
+      }
+    });
+    
+    await Promise.allSettled(refreshPromises);
+    console.log('✅ 余额刷新完成');
+  }, []);
 
   // 授权代币
   const approveToken = useCallback(async (tokenSymbol: string, amount: string) => {
@@ -169,7 +228,7 @@ export function useTrading() {
       const decimals = 18; // 大多数代币都是18位小数
       const amountWei = parseUnits(amount, decimals);
 
-      await writeContract({
+      const hash = await writeContract({
         address: tokenAddress as `0x${string}`,
         abi: KekeMockERC20_ABI,
         functionName: 'approve',
@@ -177,10 +236,20 @@ export function useTrading() {
       });
 
       toast.success('授权成功！');
+      
+      // 等待一小段时间后刷新授权额度
+      setTimeout(() => {
+        refreshBalances();
+      }, 2000);
+      
       return true;
     } catch (error) {
-      console.error('授权失败:', error);
-      toast.error('授权失败');
+      console.error('❌ 授权失败:', error);
+      if (error instanceof Error) {
+        toast.error(`授权失败: ${error.message}`);
+      } else {
+        toast.error('授权失败');
+      }
       return false;
     } finally {
       setIsLoading(false);
@@ -196,23 +265,23 @@ export function useTrading() {
 
     try {
       setIsLoading(true);
+      setTransactionStatus('pending');
+      
       const { systemTokenInfo, amount, price, tokenSymbol } = params;
       const decimals = 18;
       const amountWei = parseUnits(amount, decimals);
       const totalETH = parseFloat(amount) * parseFloat(price);
       const totalETHWei = parseUnits(totalETH.toString(), decimals);
       
-      console.log('executeBuy:systemTokenInfo', systemTokenInfo)
+      console.log('🛒 执行买入交易:', { tokenSymbol, amount, price, systemTokenInfo });
       
       // 获取代币地址
       const tokenInfo = systemTokenInfo;
       const ethInfo = getETHInfo();
       
-      console.log('executeBuy:tokenInfo', tokenInfo)
-      console.log('executeBuy:ethInfo', ethInfo)
-      
       if (!tokenInfo?.address) {
         toast.error('获取目标代币地址失败');
+        setTransactionStatus('error');
         return false;
       }
 
@@ -220,15 +289,26 @@ export function useTrading() {
       const ethAddress = ethInfo.wethAddress || ethInfo.address;
       if (!ethAddress) {
         toast.error('获取 ETH 地址失败');
+        setTransactionStatus('error');
         return false;
       }
 
       const path = [ethAddress, tokenInfo.address];
       const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20分钟后过期
 
+      console.log('📊 交易参数:', {
+        路径: path,
+        ETH数量: formatUnits(totalETHWei, 18),
+        最小代币输出: formatUnits(amountWei, 18),
+        截止时间: new Date(deadline * 1000).toISOString(),
+        使用原生ETH: shouldUseNativeETH(),
+      });
+
+      let transactionHash;
+
       // 如果使用原生 ETH，调用 swapExactETHForTokens
       if (shouldUseNativeETH()) {
-        await writeContract({
+        transactionHash = await writeContract({
           address: routerAddress as `0x${string}`,
           abi: KekeswapRouter_ABI,
           functionName: 'swapExactETHForTokens',
@@ -242,7 +322,7 @@ export function useTrading() {
         });
       } else {
         // 使用 WETH，调用 swapExactTokensForTokens
-        await writeContract({
+        transactionHash = await writeContract({
           address: routerAddress as `0x${string}`,
           abi: KekeswapRouter_ABI,
           functionName: 'swapExactTokensForTokens',
@@ -256,11 +336,25 @@ export function useTrading() {
         });
       }
 
-      toast.success(`成功买入 ${amount} ${tokenSymbol}！`);
+      console.log('📝 交易已提交:', transactionHash);
+      toast.success(`买入交易已提交！正在等待确认...`);
+      setTransactionStatus('success');
+      
+      // 等待一段时间后刷新余额
+      setTimeout(() => {
+        refreshBalances();
+        toast.success(`成功买入 ${amount} ${tokenSymbol}！`);
+      }, 3000);
+      
       return true;
     } catch (error) {
-      console.error('买入失败:', error);
-      toast.error('买入失败');
+      console.error('❌ 买入失败:', error);
+      setTransactionStatus('error');
+      if (error instanceof Error) {
+        toast.error(`买入失败: ${error.message}`);
+      } else {
+        toast.error('买入失败');
+      }
       return false;
     } finally {
       setIsLoading(false);
@@ -276,11 +370,15 @@ export function useTrading() {
 
     try {
       setIsLoading(true);
+      setTransactionStatus('pending');
+      
       const { tokenSymbol, amount, price, systemTokenInfo } = params;
       const decimals = 18;
       const amountWei = parseUnits(amount, decimals);
       const minETH = parseFloat(amount) * parseFloat(price) * 0.95; // 5%滑点保护
       const minETHWei = parseUnits(minETH.toString(), decimals);
+
+      console.log('💰 执行卖出交易:', { tokenSymbol, amount, price, systemTokenInfo });
 
       // 获取代币地址
       const tokenInfo = systemTokenInfo || getTokenConfigBySymbol(tokenSymbol);
@@ -288,6 +386,7 @@ export function useTrading() {
       
       if (!tokenInfo?.address) {
         toast.error('获取代币地址失败');
+        setTransactionStatus('error');
         return false;
       }
 
@@ -295,15 +394,27 @@ export function useTrading() {
       const ethAddress = ethInfo.wethAddress || ethInfo.address;
       if (!ethAddress) {
         toast.error('获取 ETH 地址失败');
+        setTransactionStatus('error');
         return false;
       }
 
       const path = [tokenInfo.address, ethAddress];
       const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
 
+      console.log('📊 卖出参数:', {
+        路径: path,
+        代币数量: formatUnits(amountWei, 18),
+        最小ETH输出: formatUnits(minETHWei, 18),
+        滑点保护: '5%',
+        截止时间: new Date(deadline * 1000).toISOString(),
+        使用原生ETH: shouldUseNativeETH(),
+      });
+
+      let transactionHash;
+
       // 如果目标是原生 ETH，调用 swapExactTokensForETH
       if (shouldUseNativeETH()) {
-        await writeContract({
+        transactionHash = await writeContract({
           address: routerAddress as `0x${string}`,
           abi: KekeswapRouter_ABI,
           functionName: 'swapExactTokensForETH',
@@ -317,7 +428,7 @@ export function useTrading() {
         });
       } else {
         // 使用 WETH，调用 swapExactTokensForTokens
-        await writeContract({
+        transactionHash = await writeContract({
           address: routerAddress as `0x${string}`,
           abi: KekeswapRouter_ABI,
           functionName: 'swapExactTokensForTokens',
@@ -331,11 +442,25 @@ export function useTrading() {
         });
       }
 
-      toast.success(`成功卖出 ${amount} ${tokenSymbol}！`);
+      console.log('📝 卖出交易已提交:', transactionHash);
+      toast.success(`卖出交易已提交！正在等待确认...`);
+      setTransactionStatus('success');
+      
+      // 等待一段时间后刷新余额
+      setTimeout(() => {
+        refreshBalances();
+        toast.success(`成功卖出 ${amount} ${tokenSymbol}！`);
+      }, 3000);
+      
       return true;
     } catch (error) {
-      console.error('卖出失败:', error);
-      toast.error('卖出失败');
+      console.error('❌ 卖出失败:', error);
+      setTransactionStatus('error');
+      if (error instanceof Error) {
+        toast.error(`卖出失败: ${error.message}`);
+      } else {
+        toast.error('卖出失败');
+      }
       return false;
     } finally {
       setIsLoading(false);
@@ -358,6 +483,10 @@ export function useTrading() {
     // 状态
     isLoading: isLoading || isPending,
     isConnected,
+    transactionStatus,
+    isConfirming,
+    isConfirmed,
+    isTransactionError,
     
     // 网络信息
     chainId,
@@ -369,6 +498,7 @@ export function useTrading() {
     useTokenAllowance,
     getTokenPrice,
     getETHInfo,
+    refreshBalances,
     
     // 交易函数
     approveToken,
