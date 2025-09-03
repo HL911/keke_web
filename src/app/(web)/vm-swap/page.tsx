@@ -102,41 +102,17 @@ export default function VMSwapPage() {
       <div className="max-w-7xl mx-auto p-4 grid grid-cols-12 gap-6 h-[calc(100vh-120px)]">
         {/* 左侧：图表区域 */}
         <div className="col-span-8">
-          <TradingChart symbol="KEKE/USDT" tokenName="KEKE" />
+          {/* <TradingChart symbol="KEKE/USDT" tokenName="KEKE" /> */}
           {/* <TradingChartSimple ></TradingChartSimple> */}
+          {/* 订单簿 */}
+        <OrderBook />
         </div>
-
         {/* 右侧：交易面板和订单簿 */}
         <div className="col-span-4 space-y-6">
           {/* 交易面板 */}
           <TradingPanel symbol="KEKE" currentPrice={currentPrice} />
-          
-          {/* 订单簿 */}
-          <OrderBook />
         </div>
-      </div>
-
-      {/* 底部快速操作栏 */}
-      <div className="bg-gray-900 border-t border-gray-800 p-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between">
-            <div className="flex gap-4">
-              <Button variant="outline" className="border-gray-600 text-gray-300 hover:bg-gray-800">
-                添加流动性
-              </Button>
-              <Button variant="outline" className="border-gray-600 text-gray-300 hover:bg-gray-800">
-                质押挖矿
-              </Button>
-              <Button variant="outline" className="border-gray-600 text-gray-300 hover:bg-gray-800">
-                查看合约
-              </Button>
-            </div>
-            
-            <div className="text-sm text-gray-400">
-              当前钱包: {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : '未连接'}
-            </div>
-          </div>
-        </div>
+        
       </div>
       
       {/* Toast notifications */}
