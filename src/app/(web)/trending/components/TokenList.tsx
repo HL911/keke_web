@@ -23,6 +23,7 @@ import {
 import { useState, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 interface MemeToken {
   id: number;
@@ -53,6 +54,7 @@ interface TokenListProps {
 }
 
 export function TokenList({ tokens, loading, error }: TokenListProps) {
+  const router = useRouter();
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('market_cap');
@@ -60,7 +62,8 @@ export function TokenList({ tokens, loading, error }: TokenListProps) {
   const [showFilters, setShowFilters] = useState(false);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
 
-  const copyToClipboard = async (address: string) => {
+  const copyToClipboard = async (address: string, event: React.MouseEvent) => {
+    event.stopPropagation();
     try {
       await navigator.clipboard.writeText(address);
       setCopiedAddress(address);
@@ -94,7 +97,12 @@ export function TokenList({ tokens, loading, error }: TokenListProps) {
     }
   };
 
-  const toggleFavorite = (address: string) => {
+  const handleTradeClick = (tokenSymbol: string) => {
+    router.push(`/vm-swap/${tokenSymbol}`);
+  };
+
+  const toggleFavorite = (address: string, event: React.MouseEvent) => {
+    event.stopPropagation();
     const newFavorites = new Set(favorites);
     if (newFavorites.has(address)) {
       newFavorites.delete(address);
@@ -330,14 +338,16 @@ export function TokenList({ tokens, loading, error }: TokenListProps) {
 
         {/* Enhanced Token Rows */}
          {filteredAndSortedTokens.map((token, index) => (
-           <div key={token.address} className="grid grid-cols-6 gap-4 p-6 border-b last:border-b-0 hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-purple-50/50 transition-all duration-300 group">
+           <div key={token.address} 
+           onClick={() => handleTradeClick(token.symbol)}
+           className="grid grid-cols-6 gap-4 p-6 border-b last:border-b-0 hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-purple-50/50 transition-all duration-300 group">
              {/* Token Info Card with Favorite */}
              <div className="flex items-center gap-3">
                {/* Favorite Button */}
                <Button
                  variant="ghost"
                  size="icon"
-                 onClick={() => toggleFavorite(token.address)}
+                 onClick={(e) => toggleFavorite(token.address, e)}
                  className="w-7 h-7 hover:bg-yellow-100 transition-colors flex-shrink-0"
                >
                  <Star 
@@ -384,7 +394,7 @@ export function TokenList({ tokens, loading, error }: TokenListProps) {
                    <Button
                      variant="ghost"
                      size="icon"
-                     onClick={() => copyToClipboard(token.address)}
+                     onClick={(e) => copyToClipboard(token.address, e)}
                      className="w-5 h-5 hover:bg-blue-100 transition-colors shrink-0"
                      title="复制合约地址"
                    >
@@ -400,7 +410,7 @@ export function TokenList({ tokens, loading, error }: TokenListProps) {
                      <Button
                        variant="ghost"
                        size="icon"
-                       onClick={() => window.open(token.website_address, '_blank')}
+                       onClick={(e) => { e.stopPropagation(); window.open(token.website_address, '_blank'); }}
                        className="w-6 h-6 hover:bg-blue-100 transition-colors"
                        title="访问官网"
                      >
@@ -411,7 +421,7 @@ export function TokenList({ tokens, loading, error }: TokenListProps) {
                      <Button
                        variant="ghost"
                        size="icon"
-                       onClick={() => window.open(token.twitter_address, '_blank')}
+                       onClick={(e) => { e.stopPropagation(); window.open(token.twitter_address, '_blank'); }}
                        className="w-6 h-6 hover:bg-blue-100 transition-colors"
                        title="Twitter"
                      >
@@ -422,7 +432,7 @@ export function TokenList({ tokens, loading, error }: TokenListProps) {
                      <Button
                        variant="ghost"
                        size="icon"
-                       onClick={() => window.open(token.telegram_address, '_blank')}
+                       onClick={(e) => { e.stopPropagation(); window.open(token.telegram_address, '_blank'); }}
                        className="w-6 h-6 hover:bg-blue-100 transition-colors"
                        title="Telegram"
                      >
@@ -467,7 +477,7 @@ export function TokenList({ tokens, loading, error }: TokenListProps) {
                    <Button
                      variant="ghost"
                      size="icon"
-                     onClick={() => window.open(token.website_address, '_blank')}
+                     onClick={(e) => { e.stopPropagation(); window.open(token.website_address, '_blank'); }}
                      className="w-8 h-8 hover:bg-blue-100 transition-colors"
                      title="访问官网"
                    >
@@ -478,7 +488,7 @@ export function TokenList({ tokens, loading, error }: TokenListProps) {
                    <Button
                      variant="ghost"
                      size="icon"
-                     onClick={() => window.open(token.twitter_address, '_blank')}
+                     onClick={(e) => { e.stopPropagation(); window.open(token.twitter_address, '_blank'); }}
                      className="w-8 h-8 hover:bg-blue-100 transition-colors"
                      title="Twitter"
                    >
@@ -489,7 +499,7 @@ export function TokenList({ tokens, loading, error }: TokenListProps) {
                    <Button
                      variant="ghost"
                      size="icon"
-                     onClick={() => window.open(token.telegram_address, '_blank')}
+                     onClick={(e) => { e.stopPropagation(); window.open(token.telegram_address, '_blank'); }}
                      className="w-8 h-8 hover:bg-blue-100 transition-colors"
                      title="Telegram"
                    >

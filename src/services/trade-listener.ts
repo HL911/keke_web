@@ -181,7 +181,6 @@ async function saveTradeEvent(event: any) {
         marketCap,
         volume24h
       )
-      console.log("保存到updateMemeTokenPrice--------",tokenAddress,priceUsd,marketCap,volume24h)
     } catch (error) {
       console.error(`Error updating meme token data for ${tokenAddress}:`, error)
       // 继续执行，不要因为这个错误中断整个流程
@@ -190,7 +189,6 @@ async function saveTradeEvent(event: any) {
     
     // 保存交易事件到数据库
     await insertTradeEvent(tradeEventData)
-    console.log("保存到insertTradeEvent---------")
     console.log(`Trade event saved for chain ${event.chainId}:`, event.transactionHash)
     
     // 触发K线数据聚合
