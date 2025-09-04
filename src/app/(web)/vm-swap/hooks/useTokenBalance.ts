@@ -21,12 +21,10 @@ export function useTokenBalance() {
 
   // 获取代币余额
   const useTokenBalanceQuery = (tokenSymbol: string) => {
-    const { tokenInfo, refetch } = useTokenConfig(tokenSymbol);
+    const { tokenInfo } = useTokenConfig(tokenSymbol);
     
-    // 注册刷新回调
-    if (refetch && !balanceRefreshCallbacks.current.has(refetch)) {
-      balanceRefreshCallbacks.current.add(refetch);
-    }
+    // 移除 refetch 的注册，避免余额刷新时重新获取token配置
+    // 因为token配置是相对静态的数据，不需要频繁刷新
     
     // 如果是 ETH 且当前网络支持原生 ETH，返回原生 ETH 余额
     if ((tokenSymbol === 'ETH' || tokenSymbol === 'WETH') && shouldUseNativeETH) {

@@ -2,15 +2,20 @@
 
 import { useCallback } from 'react';
 import { useChainId } from 'wagmi';
-import { useTokenConfig } from '@/hooks';
 import { foundry, mainnet, sepolia } from 'viem/chains';
+
+// 静态WETH地址配置，避免动态获取
+const WETH_ADDRESSES = {
+  [sepolia.id]: '0x75B2245a13c46677Ff66B140b6dA1751Ed96d9d6',
+  [mainnet.id]: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
+  [foundry.id]: '0x75B2245a13c46677Ff66B140b6dA1751Ed96d9d6', // 使用sepolia地址
+};
 
 /**
  * 网络信息相关 Hook - 只处理 ETH 相关逻辑
  */
 export function useNetworkInfo() {
   const chainId = useChainId();
-  const wethConfig = useTokenConfig('WETH');
 
   // 判断当前网络是否支持原生 ETH
   const isNativeETHNetwork = useCallback(() => {
@@ -24,28 +29,32 @@ export function useNetworkInfo() {
     return isNativeETHNetwork() && chainId !== foundry.id;
   }, [chainId, isNativeETHNetwork]);
 
-  // 获取 ETH/WETH 信息
+  // 获取 ETH/WETH 信息 - 使用静态配置
   const getETHInfo = useCallback(() => {
+    const wethAddress = WETH_ADDRESSES[chainId as keyof typeof WETH_ADDRESSES];
+    
     if (shouldUseNativeETH()) {
-      // 返回原生 ETH 信息（用于显示，实际交易时会转换为 WETH）
+      // 返回原生 ETH 信息
       return {
         address: '0x0000000000000000000000000000000000000000', // 原生 ETH 地址
         symbol: 'ETH',
         name: 'Ethereum',
         decimals: 18,
         isNative: true,
-        wethAddress: wethConfig.tokenInfo?.address, // WETH 合约地址，用于 DEX 交易
+        wethAddress, // WETH 合约地址，用于 DEX 交易
       };
     } else {
       // 返回 WETH 信息
       return {
-        ...wethConfig.tokenInfo,
+        address: wethAddress,
         symbol: 'WETH',
+        name: 'Wrapped Ethereum',
+        decimals: 18,
         isNative: false,
-        wethAddress: wethConfig.tokenInfo?.address,
+        wethAddress,
       };
     }
-  }, [shouldUseNativeETH, wethConfig.tokenInfo]);
+  }, [shouldUseNativeETH, chainId]);
 
   return {
     chainId,

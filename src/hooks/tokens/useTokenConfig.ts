@@ -95,6 +95,11 @@ export function getAllTokenContractConfigs() {
   return contractConfigs;
 }
 
+// 添加全局缓存来避免重复请求
+const tokenConfigCache = new Map<string, { data: Token; timestamp: number }>();
+const loadingStates = new Map<string, boolean>();
+const CACHE_DURATION = 60000; // 1分钟缓存
+
 /**
  * 获取单个代币配置的 Hook
  */
@@ -106,8 +111,23 @@ export function useTokenConfig(symbol?: string): TokenConfigHook {
   const fetchTokenConfig = async () => {
     if (!symbol) return;
 
+    // 检查缓存
+    const cached = tokenConfigCache.get(symbol);
+    if (cached && (Date.now() - cached.timestamp) < CACHE_DURATION) {
+      setTokenConfig(cached.data);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
+    // 避免重复加载同一个symbol
+    if (loadingStates.get(symbol)) {
+      return;
+    }
+
     setLoading(true);
     setError(null);
+    loadingStates.set(symbol, true);
 
     try {
       const response = await fetch(`/api/tokens?symbol=${symbol}&action=get`);
@@ -115,6 +135,11 @@ export function useTokenConfig(symbol?: string): TokenConfigHook {
 
       if (result.success) {
         setTokenConfig(result.data);
+        // 更新缓存
+        tokenConfigCache.set(symbol, {
+          data: result.data,
+          timestamp: Date.now()
+        });
       } else {
         setError(result.error || "获取代币配置失败");
       }
@@ -123,6 +148,7 @@ export function useTokenConfig(symbol?: string): TokenConfigHook {
       console.error("获取代币配置失败:", err);
     } finally {
       setLoading(false);
+      loadingStates.delete(symbol);
     }
   };
 

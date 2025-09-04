@@ -2,7 +2,7 @@
  * @Author: dreamworks.cnn@gmail.com
  * @Date: 2025-09-03 23:54:32
  * @LastEditors: dreamworks.cnn@gmail.com
- * @LastEditTime: 2025-09-04 00:56:22
+ * @LastEditTime: 2025-09-04 15:49:05
  * @FilePath: /keke_web/src/app/(web)/vm-swap/hooks/useTokenInfo.ts
  * @Description: 
  * 
@@ -10,7 +10,7 @@
  */
 "use client";
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useNetworkInfo } from './useNetworkInfo';
 
 /**
@@ -19,6 +19,8 @@ import { useNetworkInfo } from './useNetworkInfo';
 export function useTokenInfo() {
   const [memeTokenInfo, setMemeTokenInfo] = useState<any>(null);
   const [memeTokenLoading, setMemeTokenLoading] = useState(false);
+  const lastFetchedSymbol = useRef<string>('');
+  const isLoadingRef = useRef(false);
   
   const { getETHInfo } = useNetworkInfo();
 
@@ -26,19 +28,24 @@ export function useTokenInfo() {
   const getTokenConfigBySymbol = useCallback((symbol: string) => {
     if (symbol === 'ETH' || symbol === 'WETH') return getETHInfo();
     // 对于 meme 代币，返回从 API 获取的信息
-    console.log('getTokenConfigBySymbol-1', symbol, memeTokenInfo);
     return memeTokenInfo;
   }, [getETHInfo, memeTokenInfo]);
 
-  // 获取 meme 代币信息
+  // 获取 meme 代币信息 - 修复无限循环问题
   const fetchMemeTokenInfo = useCallback(async (symbol: string) => {    
     
-    if (memeTokenLoading) {
-      return; // 正在加载中，避免重复请求
+    // 避免重复请求相同的 symbol 或正在加载中
+    if (isLoadingRef.current || lastFetchedSymbol.current === symbol) {
+      console.log('🔄 跳过重复请求:', symbol);
+      return; 
     }
 
     try {
+      isLoadingRef.current = true;
       setMemeTokenLoading(true);
+      lastFetchedSymbol.current = symbol;
+      
+      console.log('🚀 开始获取代币信息:', symbol);
       
       // 先尝试通过 symbol 搜索 meme 代币
       const searchResponse = await fetch(`/api/meme-tokens?action=search&search=${symbol}`);
@@ -51,6 +58,7 @@ export function useTokenInfo() {
         });
         
         if (exactMatch) {
+          console.log('✅ 找到匹配的代币:', exactMatch);
           setMemeTokenInfo(exactMatch);
           return exactMatch;
         }
@@ -62,11 +70,21 @@ export function useTokenInfo() {
       console.error('❌ 获取 meme 代币信息失败:', error);
       return null;
     } finally {
+      isLoadingRef.current = false;
       setMemeTokenLoading(false);
     }
-  }, [memeTokenLoading]);
+  }, []); // 移除 memeTokenLoading 依赖，使用 useRef 跟踪状态
 
   
+
+  // 重置代币信息 - 当切换代币时清理状态
+  const resetTokenInfo = useCallback(() => {
+    console.log('🧹 重置代币信息');
+    setMemeTokenInfo(null);
+    setMemeTokenLoading(false);
+    lastFetchedSymbol.current = '';
+    isLoadingRef.current = false;
+  }, []);
 
   return {
     // 状态
@@ -76,5 +94,6 @@ export function useTokenInfo() {
     // 函数
     fetchMemeTokenInfo,
     getTokenConfigBySymbol,
+    resetTokenInfo,
   };
 }

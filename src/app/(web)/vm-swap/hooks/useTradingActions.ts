@@ -8,6 +8,17 @@ import { usePoolAddress } from '@/hooks';
 import { useTokenInfo } from './useTokenInfo';
 import POOL_ABI from '@/abi/Pool.json';
 
+/**
+ * 安全数字格式化 - 防止科学计数法导致的 viem 解析错误
+ */
+function formatSafeNumber(value: string | number, decimals: number = 18): string {
+  const num = typeof value === 'string' ? parseFloat(value) : value;
+  if (isNaN(num) || num <= 0) return '0';
+  
+  // 使用 toFixed 确保不会产生科学计数法
+  return num.toFixed(decimals).replace(/\.?0+$/, '');
+}
+
 export interface TradeParams {
   tokenSymbol: string;
   amount: string;
@@ -45,10 +56,20 @@ export function useTradingActions() {
       setTransactionStatus('pending');
       
       const { memeTokenInfo, amount, price, tokenSymbol } = params;
-      const totalETH = parseFloat(amount) * parseFloat(price);
-      const totalETHWei = parseUnits(totalETH.toString(), 18);
       
-      console.log('🚀 Launch Pool 买入交易:', { tokenSymbol, amount, price, totalETH, memeTokenInfo });
+      // 修复：直接使用amount作为ETH数量，不需要乘以价格
+      // amount 就是用户想要花费的ETH数量
+      const safeAmount = formatSafeNumber(amount, 18);
+      const totalETHWei = parseUnits(safeAmount, 18);
+      
+      console.log('🚀 Launch Pool 买入交易:', { 
+        tokenSymbol, 
+        原始ETH数量: amount,
+        安全格式化ETH: safeAmount,
+        price, 
+        totalETHWei: totalETHWei.toString(),
+        memeTokenInfo 
+      });
       
       // 获取代币地址
       const tokenInfo = memeTokenInfo;
@@ -61,7 +82,8 @@ export function useTradingActions() {
 
       console.log('📊 Launch Pool 交易参数:', {
         代币地址: tokenInfo.address,
-        ETH数量: formatUnits(totalETHWei, 18),
+        ETH数量: safeAmount,
+        ETH_Wei: totalETHWei.toString(),
         接收地址: address,
         池地址: poolAddress,
       });
@@ -120,7 +142,8 @@ export function useTradingActions() {
       
       const { tokenSymbol, amount, price, memeTokenInfo } = params;
       const decimals = 18;
-      const amountWei = parseUnits(amount, decimals);
+      const safeAmount = formatSafeNumber(amount, decimals);
+      const amountWei = parseUnits(safeAmount, decimals);
 
       console.log('🔥 Launch Pool 卖出交易:', { tokenSymbol, amount, price, memeTokenInfo });
 

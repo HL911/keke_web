@@ -7,8 +7,8 @@ import { TrendingUp, TrendingDown, Volume2, Users, Activity } from "lucide-react
 import { useAccount } from "wagmi";
 import { Toaster } from "sonner";
 import { TradingChart, TradingPanel, OrderBook } from '../components';
-import { usePairInfo } from '@/hooks/usePairInfo';
-import { useTokenConfig } from '@/hooks';
+import { usePoolPrice } from '@/hooks/usePoolPrice';
+import { useTokenInfo } from '../hooks/useTokenInfo';
 
 interface VMSwapPageProps {
   params: {
@@ -23,26 +23,40 @@ export default function VMSwapPage({ params }: VMSwapPageProps) {
   // 解码 URL 参数（防止特殊字符问题）
   const decodedTokenSymbol = decodeURIComponent(tokenSymbol);
   
-  // 获取代币配置
-  const memeTokenConfig = useTokenConfig(decodedTokenSymbol);
-  const ethConfig = useTokenConfig('WETH'); // 使用WETH作为基础交易对
+  // 获取代币信息
+  const { fetchMemeTokenInfo, memeTokenInfo, memeTokenLoading } = useTokenInfo();
   
-  // 获取交易对信息
-  const pairInfo = usePairInfo({
-    token0Symbol: decodedTokenSymbol,
-    token1Symbol: 'WETH',
-    token0Address: memeTokenConfig.tokenInfo?.address,
-    token1Address: ethConfig.tokenInfo?.address,
-  });
+  // 获取基于Pool合约的价格信息
+  const poolPrice = usePoolPrice(memeTokenInfo?.address, 3000); // 假设ETH价格为3000 USD
+  
+  // 获取 meme 代币信息 - 当代币符号变化时重置并获取新信息
+  useEffect(() => {
+    if (decodedTokenSymbol) {
+      console.log('🔄 页面代币符号变化:', decodedTokenSymbol);
+      // 先重置之前的信息，避免显示错误的缓存数据
+      fetchMemeTokenInfo(decodedTokenSymbol);
+    }
+  }, [decodedTokenSymbol]); // 移除 fetchMemeTokenInfo 依赖，避免循环
 
-  // 使用真实数据或回退到默认值
-  const currentPrice = pairInfo.currentPrice || "0.42814";
-  const priceChange = pairInfo.priceChange24h || "+0.11%";
+  // 使用 Pool 合约的真实数据或回退到默认值
+  const currentPrice = poolPrice.priceInETH || "0.0000001";
+  const priceChange = poolPrice.priceChange24h || "+0.00%";
   const marketStats = {
-    volume24h: pairInfo.volume24h || "$428.14M",
-    marketCap: pairInfo.marketCap || "$806.3K",
-    holders: pairInfo.holders || "1,245",
-    transactions: "8,932" // 暂时保持模拟数据，后续可从API获取
+    volume24h: poolPrice.volume24h || "$0",
+    marketCap: poolPrice.marketCap || "$0",
+    holders: "1,245", // 暂时保持模拟数据，后续可从API获取
+    transactions: "8,932", // 暂时保持模拟数据，后续可从API获取
+    
+    // 新增的储备量信息
+    virtualTokenReserves: poolPrice.virtualTokenReserves,
+    virtualEthReserves: poolPrice.virtualEthReserves,
+    realTokenReserves: poolPrice.realTokenReserves,
+    realEthReserves: poolPrice.realEthReserves,
+    
+    // 交易状态
+    presaleOpen: poolPrice.presaleOpen,
+    tradingOpen: poolPrice.tradingOpen,
+    poolFail: poolPrice.poolFail,
   };
 
   return (
@@ -66,14 +80,22 @@ export default function VMSwapPage({ params }: VMSwapPageProps) {
                 <div className="text-center">
                   <div className="text-2xl font-bold">
                     {currentPrice} ETH
-                    {pairInfo.isLoading && (
+                    {(poolPrice.isLoading || memeTokenLoading) && (
                       <span className="ml-2 text-sm text-gray-400">(加载中...)</span>
+                    )}
+                    {poolPrice.error && (
+                      <span className="ml-2 text-sm text-red-400">(加载失败)</span>
                     )}
                   </div>
                   <div className={`text-sm flex items-center gap-1 ${priceChange.startsWith('+') ? 'text-green-400' : 'text-red-400'}`}>
                     {priceChange.startsWith('+') ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
                     {priceChange}
                   </div>
+                  {poolPrice.priceInUSD && (
+                    <div className="text-sm text-gray-400">
+                      ≈ ${poolPrice.priceInUSD} USD
+                    </div>
+                  )}
                 </div>
                 
                 <div className="flex gap-6 text-sm">
@@ -103,12 +125,26 @@ export default function VMSwapPage({ params }: VMSwapPageProps) {
             </div>
             
             <div className="flex gap-3">
-              <Badge variant="outline" className="border-green-400 text-green-400">
-                已验证
-              </Badge>
-              <Badge variant="outline" className="border-blue-400 text-blue-400">
-                DEX
-              </Badge>
+              {marketStats.presaleOpen && (
+                <Badge variant="outline" className="border-orange-400 text-orange-400">
+                  预售中
+                </Badge>
+              )}
+              {marketStats.tradingOpen && (
+                <Badge variant="outline" className="border-green-400 text-green-400">
+                  交易开放
+                </Badge>
+              )}
+              {marketStats.poolFail && (
+                <Badge variant="outline" className="border-red-400 text-red-400">
+                  池子失败
+                </Badge>
+              )}
+              {memeTokenInfo && (
+                <Badge variant="outline" className="border-blue-400 text-blue-400">
+                  已验证
+                </Badge>
+              )}
               {address && (
                 <Badge variant="outline" className="border-yellow-400 text-yellow-400">
                   已连接
