@@ -5,7 +5,9 @@ import {
   executeTransaction,
   TradingPair,
   TradingPairWithTokens,
+  Token,
 } from "./db-core";
+import { getTokenByAddress } from "./token-queries";
 
 /**
  * 创建新的交易对
@@ -16,15 +18,34 @@ export async function createTradingPair(
   token1Address: string,
   reserve0: string,
   reserve1: string,
-  totalSupply: string
-): Promise<void> {
+  totalSupply: string,
+  tvlUsd?: number,
+  volume24h?: string
+): Promise<TradingPair> {
   await executeUpdate(
     `
-    INSERT INTO trading_pairs (pair_address, token0_address, token1_address, reserve0, reserve1, total_supply)
-    VALUES (?, ?, ?, ?, ?, ?)
+    INSERT INTO trading_pairs (pair_address, token0_address, token1_address, reserve0, reserve1, total_supply, tvl_usd, volume_24h)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `,
-    [pairAddress, token0Address, token1Address, reserve0, reserve1, totalSupply]
+    [
+      pairAddress,
+      token0Address,
+      token1Address,
+      reserve0,
+      reserve1,
+      totalSupply,
+      tvlUsd || 0,
+      volume24h || "0",
+    ]
   );
+
+  // 返回新创建的交易对
+  const newPair = (await executeQueryOne(
+    `SELECT * FROM trading_pairs WHERE pair_address = ?`,
+    [pairAddress]
+  )) as TradingPair;
+
+  return newPair;
 }
 
 /**
@@ -34,16 +55,32 @@ export async function updatePairReserves(
   pairAddress: string,
   reserve0: string,
   reserve1: string,
-  totalSupply: string
-): Promise<void> {
+  totalSupply: string,
+  tvlUsd?: number,
+  volume24h?: string
+): Promise<TradingPair> {
   await executeUpdate(
     `
     UPDATE trading_pairs 
-    SET reserve0 = ?, reserve1 = ?, total_supply = ?, updated_at = datetime('now', 'localtime')
+    SET 
+      reserve0 = ?, 
+      reserve1 = ?, 
+      total_supply = ?,
+      tvl_usd = COALESCE(?, tvl_usd),
+      volume_24h = COALESCE(?, volume_24h),
+      updated_at = datetime('now', 'localtime')
     WHERE pair_address = ?
     `,
-    [reserve0, reserve1, totalSupply, pairAddress]
+    [reserve0, reserve1, totalSupply, tvlUsd, volume24h, pairAddress]
   );
+
+  // 返回更新后的交易对
+  const updatedPair = (await executeQueryOne(
+    `SELECT * FROM trading_pairs WHERE pair_address = ?`,
+    [pairAddress]
+  )) as TradingPair;
+
+  return updatedPair;
 }
 
 /**
@@ -98,9 +135,17 @@ export async function getPairByAddress(
       t0.symbol as token0_symbol,
       t0.name as token0_name,
       t0.decimals as token0_decimals,
+      t0.logo_uri as token0_logo,
+      t0.price_usd as token0_price_usd,
+      t0.market_cap as token0_market_cap,
+      t0.volume_24h as token0_volume_24h,
       t1.symbol as token1_symbol,
       t1.name as token1_name,
-      t1.decimals as token1_decimals
+      t1.decimals as token1_decimals,
+      t1.logo_uri as token1_logo,
+      t1.price_usd as token1_price_usd,
+      t1.market_cap as token1_market_cap,
+      t1.volume_24h as token1_volume_24h
     FROM trading_pairs tp
     JOIN tokens t0 ON tp.token0_address = t0.address
     JOIN tokens t1 ON tp.token1_address = t1.address
@@ -110,6 +155,36 @@ export async function getPairByAddress(
   )) as TradingPairWithTokens | undefined;
 
   return pair || null;
+}
+
+/**
+ * 根据地址获取交易对详细信息（包含完整的token信息）
+ */
+export async function getPairWithFullTokenInfo(pairAddress: string): Promise<{
+  pair: TradingPairWithTokens;
+  token0: Token;
+  token1: Token;
+} | null> {
+  const pair = await getPairByAddress(pairAddress);
+  if (!pair) {
+    return null;
+  }
+
+  // 获取完整的token0信息
+  const token0 = await getTokenByAddress(pair.token0_address);
+
+  // 获取完整的token1信息
+  const token1 = await getTokenByAddress(pair.token1_address);
+
+  if (!token0 || !token1) {
+    return null;
+  }
+
+  return {
+    pair,
+    token0,
+    token1,
+  };
 }
 
 /**

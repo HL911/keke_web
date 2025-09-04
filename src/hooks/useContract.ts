@@ -12,6 +12,7 @@ interface NetworkContracts {
   poolAddress: string;
   kekeswapRouterAddress: string;
   kekeswapFactoryAddress: string;
+  wethAddress: string;
 }
 
 // 不同网络的合约地址配置

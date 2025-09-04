@@ -8,23 +8,85 @@ import {
 } from "./db-core";
 
 /**
- * 更新用户持仓信息
+ * 创建用户持仓
  */
-export async function upsertUserPosition(
+export async function createUserPosition(
   userAddress: string,
   pairAddress: string,
   lpBalance: string,
   token0Balance: string,
-  token1Balance: string
-): Promise<void> {
-  await executeUpdate(
+  token1Balance: string,
+  transactionHash?: string
+): Promise<UserPosition> {
+  const operations = [
+    async () => {
+      // 创建用户持仓
+      await executeUpdate(
+        `
+        INSERT INTO user_positions (
+          user_address, pair_address, lp_balance, token0_balance, token1_balance, last_updated
+        ) VALUES (?, ?, ?, ?, ?, datetime('now', 'localtime'))
+        `,
+        [userAddress, pairAddress, lpBalance, token0Balance, token1Balance]
+      );
+    },
+  ];
+
+  await executeTransaction(operations);
+
+  // 返回新创建的持仓记录
+  const newPosition = (await executeQueryOne(
     `
-    INSERT OR REPLACE INTO user_positions (
-      user_address, pair_address, lp_balance, token0_balance, token1_balance, last_updated
-    ) VALUES (?, ?, ?, ?, ?, datetime('now', 'localtime'))
+    SELECT * FROM user_positions 
+    WHERE user_address = ? AND pair_address = ?
     `,
-    [userAddress, pairAddress, lpBalance, token0Balance, token1Balance]
-  );
+    [userAddress, pairAddress]
+  )) as UserPosition;
+
+  return newPosition!;
+}
+
+/**
+ * 更新用户持仓
+ */
+export async function updateUserPosition(
+  userAddress: string,
+  pairAddress: string,
+  lpBalance: string,
+  token0Balance: string,
+  token1Balance: string,
+  transactionHash?: string
+): Promise<UserPosition> {
+  const operations = [
+    async () => {
+      // 更新用户持仓
+      await executeUpdate(
+        `
+        UPDATE user_positions 
+        SET 
+          lp_balance = COALESCE(?, lp_balance),
+          token0_balance = COALESCE(?, token0_balance),
+          token1_balance = COALESCE(?, token1_balance),
+          last_updated = datetime('now', 'localtime')
+        WHERE user_address = ? AND pair_address = ?
+        `,
+        [lpBalance, token0Balance, token1Balance, userAddress, pairAddress]
+      );
+    },
+  ];
+
+  await executeTransaction(operations);
+
+  // 返回更新后的持仓记录
+  const updatedPosition = (await executeQueryOne(
+    `
+    SELECT * FROM user_positions 
+    WHERE user_address = ? AND pair_address = ?
+    `,
+    [userAddress, pairAddress]
+  )) as UserPosition;
+
+  return updatedPosition!;
 }
 
 /**
@@ -91,7 +153,7 @@ export async function getUserPositionInPair(
 }
 
 /**
- * 获取用户持仓（带价值计算）
+ * 获取用户持仓
  */
 export async function getUserPositionsWithValue(
   userAddress: string
@@ -120,52 +182,11 @@ export async function getUserPositionsWithValue(
     JOIN trading_pairs tp ON up.pair_address = tp.pair_address
     JOIN tokens t0 ON tp.token0_address = t0.address
     JOIN tokens t1 ON tp.token1_address = t1.address
-    WHERE up.user_address = ? AND up.lp_balance > '0'
+    WHERE up.user_address = ?
     ORDER BY up.last_updated DESC
     `,
+    // todo：如果token的价格实现完成，可以增加下面的过滤条件
+    // WHERE up.user_address = ? AND up.lp_balance > '0'
     [userAddress]
   )) as UserPositionWithTokens[];
-}
-
-/**
- * 创建或更新用户持仓（增强版）
- */
-export async function createOrUpdateUserPosition(
-  userAddress: string,
-  pairAddress: string,
-  lpBalance: string,
-  token0Balance: string,
-  token1Balance: string,
-  transactionHash?: string
-): Promise<void> {
-  const operations = [
-    async () => {
-      // 更新用户持仓
-      await executeUpdate(
-        `
-        INSERT OR REPLACE INTO user_positions (
-          user_address, pair_address, lp_balance, token0_balance, token1_balance, last_updated
-        ) VALUES (?, ?, ?, ?, ?, datetime('now', 'localtime'))
-        `,
-        [userAddress, pairAddress, lpBalance, token0Balance, token1Balance]
-      );
-    },
-  ];
-
-  // 如果提供了交易哈希，记录交易
-  if (transactionHash) {
-    operations.push(async () => {
-      await executeUpdate(
-        `
-        INSERT OR IGNORE INTO transactions (
-          tx_hash, pair_address, user_address, transaction_type, 
-          liquidity_change, status, block_number
-        ) VALUES (?, ?, ?, 'ADD_LIQUIDITY', ?, 'SUCCESS', 0)
-        `,
-        [transactionHash, pairAddress, userAddress, lpBalance]
-      );
-    });
-  }
-
-  await executeTransaction(operations);
 }

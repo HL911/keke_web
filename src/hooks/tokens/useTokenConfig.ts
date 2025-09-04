@@ -8,6 +8,7 @@ import MockUSDT_ABI from "../../abi/MockUSDT.json" with { type: "json" };
 import MockWBNB_ABI from "../../abi/MockWBNB.json" with { type: "json" };
 import MockWBTC_ABI from "../../abi/MockWBTC.json" with { type: "json" };
 import KekeMockERC20_ABI from "../../abi/KekeMockERC20.json" with { type: "json" };
+import { useContractAddress } from "../useContract";
 
 // token 合约名称映射
 export const CONTRACT_SYMBOLS = {
@@ -59,7 +60,14 @@ export function getKekeTokenConfig() {
 
 // 获取 WETH 配置
 export function getWeth9Config() {
-  return getTokenContractConfig(CONTRACT_SYMBOLS.WETH);
+  const symbol = CONTRACT_SYMBOLS.WETH;
+  const address = useContractAddress("wethAddress");
+
+  const abi = TOKEN_ABIS[symbol as keyof typeof TOKEN_ABIS] || TOKEN_ABIS.ERC20;
+  return {
+    address: address as `0x${string}`,
+    abi,
+  };
 }
 
 // 获取 USDT 配置
@@ -110,7 +118,7 @@ export function useTokenConfig(symbol?: string): TokenConfigHook {
     setError(null);
 
     try {
-      const response = await fetch(`/api/tokens?symbol=${symbol}`);
+      const response = await fetch(`/api/tokens?action=get&symbol=${symbol}`);
       const result = await response.json();
 
       if (result.success) {

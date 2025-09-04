@@ -2,11 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   getPoolsWithPagination,
   getPoolHistoricalAPY,
+  createTradingPair,
+  updatePairReserves,
+  getPairByAddress,
 } from "@/app/api/utils/pair-queries";
 
 /**
  * 获取流动性池列表
- * GET /api/liquidity/pools
+ * GET /api/pools
  *
  * Query Parameters:
  * - page: 页码 (默认: 1)
@@ -89,25 +92,143 @@ export async function GET(request: NextRequest) {
 }
 
 /**
- * 创建新的流动性池记录
- * POST /api/liquidity/pools
+ * 创建新的流动性池记录或更新已有的流动性池记录
+ * POST /api/pools
+ *
+ * Request Body:
+ * {
+ *   pairAddress: string,      // 交易对合约地址
+ *   token0Address: string,    // Token0 地址
+ *   token1Address: string,    // Token1 地址
+ *   reserve0: string,         // Token0 储备量
+ *   reserve1: string,         // Token1 储备量
+ *   totalSupply: string,      // LP Token 总供应量
+ *   tvlUsd?: number,          // 总锁定价值（美元）
+ *   volume24h?: string        // 24小时交易量
+ * }
  */
-export async function POST(_request: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
-    // TODO: 实现创建流动性池的逻辑
-    // 这个功能在后续的合约交互中实现
+    const body = await request.json();
+
+    // 验证必需参数
+    const {
+      pairAddress,
+      token0Address,
+      token1Address,
+      reserve0,
+      reserve1,
+      totalSupply,
+      tvlUsd,
+      volume24h,
+    } = body;
+
+    // 参数验证
+    if (!pairAddress || !token0Address || !token1Address) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "缺少必需参数",
+          message: "pairAddress, token0Address, token1Address 是必需参数",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (
+      reserve0 === undefined ||
+      reserve1 === undefined ||
+      totalSupply === undefined
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "缺少必需参数",
+          message: "reserve0, reserve1, totalSupply 是必需参数",
+        },
+        { status: 400 }
+      );
+    }
+
+    // 验证地址格式（简单验证）
+    const addressRegex = /^0x[a-fA-F0-9]{40}$/;
+    if (
+      !addressRegex.test(pairAddress) ||
+      !addressRegex.test(token0Address) ||
+      !addressRegex.test(token1Address)
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "无效的地址格式",
+          message: "所有地址必须是有效的以太坊地址格式",
+        },
+        { status: 400 }
+      );
+    }
+
+    // 验证数值参数
+    if (
+      isNaN(parseFloat(reserve0)) ||
+      isNaN(parseFloat(reserve1)) ||
+      isNaN(parseFloat(totalSupply))
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "无效的数值参数",
+          message: "reserve0, reserve1, totalSupply 必须是有效的数字",
+        },
+        { status: 400 }
+      );
+    }
+
+    // 检查交易对是否已存在
+    const existingPair = await getPairByAddress(pairAddress);
+
+    let result;
+    let isNew = false;
+
+    if (existingPair) {
+      // 更新现有记录
+      result = await updatePairReserves(
+        pairAddress,
+        reserve0,
+        reserve1,
+        totalSupply,
+        tvlUsd,
+        volume24h
+      );
+    } else {
+      // 创建新记录
+      result = await createTradingPair(
+        pairAddress,
+        token0Address,
+        token1Address,
+        reserve0,
+        reserve1,
+        totalSupply,
+        tvlUsd,
+        volume24h
+      );
+      isNew = true;
+    }
 
     return NextResponse.json({
       success: true,
-      message: "流动性池创建功能待实现",
+      message: isNew ? "流动性池创建成功" : "流动性池更新成功",
+      data: {
+        isNew,
+        pair: result,
+      },
     });
   } catch (error) {
-    console.error("创建流动性池失败:", error);
+    console.error("创建/更新流动性池失败:", error);
 
     return NextResponse.json(
       {
         success: false,
-        error: "创建流动性池失败",
+        error: "创建/更新流动性池失败",
         message: error instanceof Error ? error.message : "未知错误",
       },
       { status: 500 }

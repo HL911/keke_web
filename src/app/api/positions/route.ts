@@ -1,17 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   getUserPositionsWithValue,
-  createOrUpdateUserPosition,
+  createUserPosition,
+  updateUserPosition,
+  getUserPositionInPair,
 } from "@/app/api/utils/position-queries";
 
 /**
  * 获取用户流动性持仓
- * GET /api/liquidity/positions?user=0x...
+ * GET /api/positions?user=0x...&pair=0x...
  */
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const userAddress = searchParams.get("user");
+    const pairAddress = searchParams.get("pair");
 
     if (!userAddress) {
       return NextResponse.json(
@@ -23,42 +26,51 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    if (pairAddress) {
+      const position = await getUserPositionInPair(userAddress, pairAddress);
+      return NextResponse.json({
+        success: true,
+        data: position,
+      });
+    }
+
     // 获取用户持仓（已包含代币价格等信息）
     const positions = await getUserPositionsWithValue(userAddress);
 
     // 计算每个持仓的价值和指标
-    const positionsWithValue = await Promise.all(
-      positions.map(async (position) => {
-        const totalValueUSD = await calculatePositionValue({
-          lp_balance: position.lp_balance,
-          total_supply: "1000000", // 模拟总供应量
-          tvl_usd: 100000, // 模拟TVL
-        });
-        const { token0ValueUSD, token1ValueUSD } = await calculateTokenValues({
-          reserve0: undefined,
-          reserve1: undefined,
-          token0_price: undefined,
-          token1_price: undefined,
-        });
-        const share = await calculatePoolShare(position);
-        const unrealizedPnL = await calculateUnrealizedPnL(position);
-        const fees24h = await calculateFees24h(position);
+    // const positionsWithValue = await Promise.all(
+    //   positions.map(async (position) => {
+    //     const totalValueUSD = await calculatePositionValue({
+    //       lp_balance: position.lp_balance,
+    //       total_supply: "1000000", // 模拟总供应量
+    //       tvl_usd: 100000, // 模拟TVL
+    //     });
+    //     const { token0ValueUSD, token1ValueUSD } = await calculateTokenValues({
+    //       reserve0: undefined,
+    //       reserve1: undefined,
+    //       token0_price: undefined,
+    //       token1_price: undefined,
+    //     });
+    //     const share = await calculatePoolShare(position);
+    //     const unrealizedPnL = await calculateUnrealizedPnL(position);
+    //     const fees24h = await calculateFees24h(position);
 
-        return {
-          ...position,
-          totalValueUSD,
-          token0ValueUSD,
-          token1ValueUSD,
-          share,
-          unrealizedPnL,
-          fees24h,
-        };
-      })
-    );
+    //     return {
+    //       ...position,
+    //       totalValueUSD,
+    //       token0ValueUSD,
+    //       token1ValueUSD,
+    //       share,
+    //       unrealizedPnL,
+    //       fees24h,
+    //     };
+    //   })
+    // );
 
     return NextResponse.json({
       success: true,
-      data: positionsWithValue,
+      // data: positionsWithValue,
+      data: positions,
     });
   } catch (error) {
     console.error("获取用户持仓失败:", error);
@@ -75,10 +87,10 @@ export async function GET(request: NextRequest) {
 }
 
 /**
- * 更新用户持仓
- * PUT /api/liquidity/positions
+ * 创建或更新用户持仓
+ * POST /api/positions
  */
-export async function PUT(request: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const {
@@ -87,6 +99,7 @@ export async function PUT(request: NextRequest) {
       lpBalance,
       token0Balance,
       token1Balance,
+      transactionHash,
     } = body;
 
     if (!userAddress || !pairAddress) {
@@ -99,27 +112,53 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // 更新用户持仓（使用增强版函数）
-    await createOrUpdateUserPosition(
+    // 检查用户持仓是否已存在
+    const existingPosition = await getUserPositionInPair(
       userAddress,
-      pairAddress,
-      lpBalance || "0",
-      token0Balance || "0",
-      token1Balance || "0",
-      body.transactionHash // 可选的交易哈希
+      pairAddress
     );
+
+    let result;
+    let isNew = false;
+
+    if (existingPosition) {
+      // 更新现有持仓
+      result = await updateUserPosition(
+        userAddress,
+        pairAddress,
+        lpBalance || "0",
+        token0Balance || "0",
+        token1Balance || "0",
+        transactionHash
+      );
+    } else {
+      // 创建新持仓
+      result = await createUserPosition(
+        userAddress,
+        pairAddress,
+        lpBalance || "0",
+        token0Balance || "0",
+        token1Balance || "0",
+        transactionHash
+      );
+      isNew = true;
+    }
 
     return NextResponse.json({
       success: true,
-      message: "持仓更新成功",
+      message: isNew ? "持仓创建成功" : "持仓更新成功",
+      data: {
+        position: result,
+        isNew,
+      },
     });
   } catch (error) {
-    console.error("更新用户持仓失败:", error);
+    console.error("处理用户持仓失败:", error);
 
     return NextResponse.json(
       {
         success: false,
-        error: "更新用户持仓失败",
+        error: "处理用户持仓失败",
         message: error instanceof Error ? error.message : "未知错误",
       },
       { status: 500 }
