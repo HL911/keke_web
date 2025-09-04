@@ -3,6 +3,9 @@ import { open, Database } from "sqlite";
 import path from "path";
 import fs from "fs";
 
+import FOUNDRY_ADDRESS from "@/config/address/foundry.json" with { type: "json" };
+import SEPOLIA_ADDRESS from "@/config/address/sepolia.json" with { type: "json" };
+
 // 数据库文件路径
 const DB_PATH = path.join(process.cwd(), "data", "keke_swap.db");
 
@@ -49,7 +52,7 @@ const TABLE_SCHEMAS = {
       updated_at DATETIME DEFAULT (datetime('now', 'localtime'))
     )
   `,
-    meme_tokens: `
+  meme_tokens: `
     CREATE TABLE IF NOT EXISTS meme_tokens (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       address TEXT UNIQUE NOT NULL,
@@ -257,7 +260,7 @@ async function createAllTables(): Promise<void> {
 }
 
 /**
- * 插入初始代币数据
+ * 插入初始代币数据，仅用于本地测试
  */
 async function insertInitialTokens(): Promise<void> {
   if (!db) throw new Error("Database not initialized");
@@ -265,15 +268,15 @@ async function insertInitialTokens(): Promise<void> {
   try {
     const initialTokens = [
       {
-        address: "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+        address: FOUNDRY_ADDRESS.kekeTokenAddress,
         symbol: "KEKE",
         name: "Keke Token",
         decimals: 18,
         is_verified: true,
-        logo_uri: "/token-logos/keke-logo.png",
+        logo_uri: "/token-logos/keke-logo.svg",
       },
       {
-        address: "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
+        address: FOUNDRY_ADDRESS.wethAddress,
         symbol: "WETH",
         name: "Wrapped Ether",
         decimals: 18,
@@ -281,7 +284,7 @@ async function insertInitialTokens(): Promise<void> {
         logo_uri: "/token-logos/weth-logo.png",
       },
       {
-        address: "0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6",
+        address: FOUNDRY_ADDRESS.mockUsdtAddress,
         symbol: "USDT",
         name: "Tether USD",
         decimals: 6,
@@ -289,7 +292,7 @@ async function insertInitialTokens(): Promise<void> {
         logo_uri: "/token-logos/usdt-logo.png",
       },
       {
-        address: "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318",
+        address: FOUNDRY_ADDRESS.mockUsdcAddress,
         symbol: "USDC",
         name: "USD Coin",
         decimals: 6,
@@ -297,7 +300,7 @@ async function insertInitialTokens(): Promise<void> {
         logo_uri: "/token-logos/usdc-logo.png",
       },
       {
-        address: "0x610178dA211FEF7D417bC0e6FeD39F05609AD788",
+        address: FOUNDRY_ADDRESS.mockWbnbAddress,
         symbol: "WBNB",
         name: "Wrapped BNB",
         decimals: 18,
@@ -305,7 +308,7 @@ async function insertInitialTokens(): Promise<void> {
         logo_uri: "/token-logos/wbnb-logo.png",
       },
       {
-        address: "0xB7f8BC63BbcaD18155201308C8f3540b07f84F5e",
+        address: FOUNDRY_ADDRESS.mockWbtcAddress,
         symbol: "WBTC",
         name: "Wrapped BTC",
         decimals: 8,
@@ -338,104 +341,57 @@ async function insertInitialTokens(): Promise<void> {
 }
 
 /**
- * 插入初始流动性数据
+ * 插入初始流动性数据，仅用于本地测试
  */
 async function insertInitialLiquidity(): Promise<void> {
   if (!db) throw new Error("Database not initialized");
 
-  // addLiquidity: usdt + bnb;
-  // pairA: 0x6a46c44b4570260d2c97aacd0971141ec978563f;
-  // amountUsdt: 1000000000;
-  // amountWbnb: 500000000000000000000;
-  // liquidityA: 707106781185547;
-  // addLiquidity: weth + usdc;
-  // pairB: 0x90cf8b9a78ea5f67131a94e692c2893805814216;
-  // amountWeth: 5000000000000000000;
-  // amountUsdc: 1000000000;
-  // liquidityB: 70710678117654;
-  // addLiquidity: weth + wbnb;
-  // pairC: 0x1fbc90bdb38ccf3254af29bab6d747d2adc18a90;
-  // amountWeth: 5000000000000000000;
-  // amountWbnb: 500000000000000000000;
-  // liquidityC: 49999999999999999000;
-  // addLiquidity: usdc + wbtc;
-  // pairD: 0xc47513e8752da8bd450437b43e31ab776e53ca34;
-  // amountWeth: 1000000000;
-  // amountWbtc: 1000000000;
-  // liquidityD: 999999000;
-
   try {
+    // 简单的TVL估算 (假设 1USDT=1USDC=1美元, 1WETH=4000美元, 1WBNB=800美元, 1WBTC=100000美元)
     const initialPairs = [
       {
         // USDT + WBNB 交易对
-        pair_address: "0x6a46c44b4570260d2c97aacd0971141ec978563f", // 需要实际计算
-        token0_address: "0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6", // USDT
-        token1_address: "0x610178dA211FEF7D417bC0e6FeD39F05609AD788", // WBNB
-        reserve0: (1000 * 10 ** 6).toString(), // 1000 USDT
-        reserve1: (500 * 10 ** 18).toString(), // 500 WBNB
+        pair_address: FOUNDRY_ADDRESS.pairUsdtBnbAddress, // 需要实际计算
+        token0_address: FOUNDRY_ADDRESS.mockUsdtAddress, // USDT
+        token1_address: FOUNDRY_ADDRESS.mockWbnbAddress, // WBNB
+        reserve0: (40000 * 10 ** 6).toString(), // 40000 USDT
+        reserve1: (50 * 10 ** 18).toString(), // 50 WBNB
         total_supply: "22360679774997896964091736687", // sqrt(1000 * 10^6 * 500 * 10^18) 近似值
+        tvl_usd: 80000, // 40000 USDT + 50 WBNB * 800
       },
       {
         // WETH + USDC 交易对
-        pair_address: "0x90cf8b9a78ea5f67131a94e692c2893805814216", // 需要实际计算
-        token0_address: "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512", // WETH
-        token1_address: "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318", // USDC
-        reserve0: (5 * 10 ** 18).toString(), // 5 WETH
-        reserve1: (1000 * 10 ** 6).toString(), // 1000 USDC
+        pair_address: FOUNDRY_ADDRESS.pairWethUsdcAddress, // 需要实际计算
+        token0_address: FOUNDRY_ADDRESS.wethAddress, // WETH
+        token1_address: FOUNDRY_ADDRESS.mockUsdcAddress, // USDC
+        reserve0: (10 * 10 ** 18).toString(), // 10 WETH
+        reserve1: (40000 * 10 ** 6).toString(), // 40000 USDC
         total_supply: "70710678118654752440084436210", // sqrt(5 * 10^18 * 1000 * 10^6) 近似值
+        tvl_usd: 80000, // 10 WETH * 4000 + 40000 USDC
       },
       {
         // WETH + WBNB 交易对
-        pair_address: "0x1fbc90bdb38ccf3254af29bab6d747d2adc18a90", // 需要实际计算
-        token0_address: "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512", // WETH
-        token1_address: "0x610178dA211FEF7D417bC0e6FeD39F05609AD788", // WBNB
-        reserve0: (5 * 10 ** 18).toString(), // 5 WETH
-        reserve1: (500 * 10 ** 18).toString(), // 500 WBNB
+        pair_address: FOUNDRY_ADDRESS.pairWethWbnbAddress, // 需要实际计算
+        token0_address: FOUNDRY_ADDRESS.wethAddress, // WETH
+        token1_address: FOUNDRY_ADDRESS.mockWbnbAddress, // WBNB
+        reserve0: (10 * 10 ** 18).toString(), // 10 WETH
+        reserve1: (50 * 10 ** 18).toString(), // 50 WBNB
         total_supply: "50000000000000000000000000000", // sqrt(5 * 10^18 * 500 * 10^18) 近似值
+        tvl_usd: 80000, // 10 WETH * 4000 + 50 WBNB * 800
       },
       {
         // USDC + WBTC 交易对
-        pair_address: "0xc47513e8752da8bd450437b43e31ab776e53ca34", // 需要实际计算
-        token0_address: "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318", // USDC
-        token1_address: "0xB7f8BC63BbcaD18155201308C8f3540b07f84F5e", // WBTC
-        reserve0: (1000 * 10 ** 6).toString(), // 1000 USDC
-        reserve1: (10 * 10 ** 8).toString(), // 10 WBTC
+        pair_address: FOUNDRY_ADDRESS.pairUsdcWbtcAddress, // 需要实际计算
+        token0_address: FOUNDRY_ADDRESS.mockUsdcAddress, // USDC
+        token1_address: FOUNDRY_ADDRESS.mockWbtcAddress, // WBTC
+        reserve0: (300000 * 10 ** 6).toString(), // 300_000 USDC
+        reserve1: (3 * 10 ** 8).toString(), // 3 WBTC
         total_supply: "31622776601683793319988935444", // sqrt(1000 * 10^6 * 10 * 10^8) 近似值
+        tvl_usd: 600000, // 300_000 USDC + 3 WBTC * 100000
       },
     ];
 
     for (const pair of initialPairs) {
-      // 计算 TVL (这里简化处理，实际应该根据代币价格计算)
-      let tvl_usd = 0;
-
-      // 简单的TVL估算 (假设USDT=USDC=1美元, WETH=2000美元, WBNB=300美元, WBTC=50000美元)
-      if (
-        pair.token0_address === "0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6"
-      ) {
-        // USDT
-        tvl_usd = 2000; // 1000 USDT * 2
-      } else if (
-        pair.token0_address === "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512"
-      ) {
-        // WETH
-        if (
-          pair.token1_address === "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318"
-        ) {
-          // USDC
-          tvl_usd = 11000; // 5 WETH * 2000 + 1000 USDC
-        } else if (
-          pair.token1_address === "0x610178dA211FEF7D417bC0e6FeD39F05609AD788"
-        ) {
-          // WBNB
-          tvl_usd = 160000; // 5 WETH * 2000 + 500 WBNB * 300
-        }
-      } else if (
-        pair.token0_address === "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318"
-      ) {
-        // USDC
-        tvl_usd = 501000; // 1000 USDC + 10 WBTC * 50000
-      }
-
       await db.run(
         `
         INSERT OR REPLACE INTO trading_pairs (
@@ -451,7 +407,7 @@ async function insertInitialLiquidity(): Promise<void> {
           pair.total_supply,
           pair.reserve0,
           pair.reserve1,
-          tvl_usd,
+          pair.tvl_usd,
           "0", // 初始24小时交易量为0
           1, // 激活状态
         ]

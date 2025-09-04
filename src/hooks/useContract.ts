@@ -1,4 +1,4 @@
-'use client'
+"use client";
 
 import { useChainId } from "wagmi";
 import { sepolia, foundry } from "viem/chains";
@@ -14,6 +14,7 @@ interface NetworkContracts {
   poolAddress: string;
   kekeswapRouterAddress: string;
   kekeswapFactoryAddress: string;
+  wethAddress: string;
   masterAddress: string;
   syrupBarAddress: string;
   kekeTokenAddress: string;

@@ -33,16 +33,6 @@ export function Navigation() {
 
   const navigationItems = [
     {
-      title: "首页",
-      href: "/",
-      icon: <Home className="w-4 h-4" />,
-    },
-    {
-      title: "虚拟交易",
-      href: "/vm-swap",
-      icon: <Coins className="w-4 h-4" />,
-    },
-    {
       title: "交易",
       href: "/swap",
       icon: <Coins className="w-4 h-4" />,
@@ -51,6 +41,11 @@ export function Navigation() {
       title: "流动性",
       href: "/pool",
       icon: <Layers className="w-4 h-4" />,
+    },
+    {
+      title: "农场",
+      href: "/farm",
+      icon: <Award className="w-4 h-4" />,
     },
     {
       title: "创建代币",
@@ -63,18 +58,18 @@ export function Navigation() {
       icon: <TrendingUp className="w-4 h-4" />,
     },
     {
-      title: "农场",
-      href: "/farm",
-      icon: <Award className="w-4 h-4" />,
-    },
-    {
-      title: "数据",
-      href: "/analytics",
-      icon: <BarChart3 className="w-4 h-4" />,
+      title: "虚拟交易",
+      href: "/vm-swap",
+      icon: <Coins className="w-4 h-4" />,
     },
     {
       title: "交易监控",
       href: "/trade-monitor",
+      icon: <Monitor className="w-4 h-4" />,
+    },
+    {
+      title: "数据库监控",
+      href: "/database-monitor",
       icon: <Monitor className="w-4 h-4" />,
     },
   ];
@@ -104,7 +99,7 @@ export function Navigation() {
                   asChild
                   className={cn(
                     navigationMenuTriggerStyle(),
-                    "flex items-center gap-2 transition-all duration-200 hover:bg-accent/80 hover:text-accent-foreground hover:scale-105",
+                    "flex items-center transition-all duration-200 hover:bg-accent/80 hover:text-accent-foreground hover:scale-105",
                     pathname === item.href && "bg-accent text-accent-foreground"
                   )}
                 >

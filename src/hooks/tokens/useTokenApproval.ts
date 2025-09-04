@@ -234,9 +234,19 @@ export function formatAllowance(
   const formatted = formatUnits(allowance, decimals);
   const number = parseFloat(formatted);
 
-  if (number >= 1e9) return `${(number / 1e9).toFixed(2)}B ${symbol}`;
-  if (number >= 1e6) return `${(number / 1e6).toFixed(2)}M ${symbol}`;
-  if (number >= 1e3) return `${(number / 1e3).toFixed(2)}K ${symbol}`;
+  if (number === 0) return "0";
 
-  return `${number.toFixed(6)} ${symbol}`;
+  // 根据decimals调整最小显示阈值
+  const minThreshold = Math.pow(10, -Math.min(6, decimals));
+  if (number < minThreshold) return `< ${minThreshold} ${symbol}`;
+
+  // 对于6位小数的代币，如果余额正好是最小单位，也显示为小于阈值
+  if (decimals === 6 && number === minThreshold)
+    return `< ${minThreshold} ${symbol}`;
+
+  if (number < 0.01) return `${number.toFixed(6)} ${symbol}`;
+  if (number < 1) return `${number.toFixed(4)} ${symbol}`;
+  if (number < 1000) return `${number.toFixed(2)} ${symbol}`;
+  if (number < 1000000) return `${(number / 1000).toFixed(2)}K ${symbol}`;
+  return `${(number / 1000000).toFixed(2)}M ${symbol}`;
 }

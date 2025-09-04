@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useAccount, useReadContract } from "wagmi";
+import { useAccount, useReadContract, useBalance } from "wagmi";
 import { formatUnits, erc20Abi } from "viem";
 
 export interface TokenBalanceState {
@@ -54,7 +54,15 @@ export function useTokenBalance({
       const balanceNum = parseFloat(balanceFormatted);
 
       if (balanceNum === 0) return "0";
-      if (balanceNum < 0.000001) return "< 0.000001";
+
+      // 根据decimals调整最小显示阈值
+      const minThreshold = Math.pow(10, -Math.min(6, decimals));
+      if (balanceNum < minThreshold) return `< ${minThreshold}`;
+
+      // 对于6位小数的代币，如果余额正好是最小单位，也显示为小于阈值
+      if (decimals === 6 && balanceNum === minThreshold)
+        return `< ${minThreshold}`;
+
       if (balanceNum < 0.01) return balanceNum.toFixed(6);
       if (balanceNum < 1) return balanceNum.toFixed(4);
       if (balanceNum < 1000) return balanceNum.toFixed(2);
@@ -175,70 +183,80 @@ export function useMultiTokenBalance(
  */
 export function useNativeBalance() {
   const { address: userAddress } = useAccount();
-  const [balance, setBalance] = useState<bigint>(BigInt(0));
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // 获取原生代币余额
-  const fetchNativeBalance = useCallback(async () => {
-    if (!userAddress) return;
+  // 使用 wagmi 的 useBalance hook 获取原生代币余额
+  const {
+    data: balanceData,
+    isLoading,
+    refetch,
+    error: balanceError,
+  } = useBalance({
+    address: userAddress,
+    query: {
+      enabled: !!userAddress,
+    },
+  });
 
-    setIsLoading(true);
-    setError(null);
+  // 格式化显示
+  const formatted = useMemo(() => {
+    if (!balanceData?.value || balanceData.value === BigInt(0)) return "0";
 
     try {
-      // 模拟获取原生代币余额
-      // 实际项目中应该使用 wagmi 的 useBalance hook
-      const response = await fetch(`/api/balance/${userAddress}`);
-      if (!response.ok) throw new Error("获取余额失败");
+      const balanceFormatted = formatUnits(
+        balanceData.value,
+        balanceData.decimals
+      );
+      const balanceNum = parseFloat(balanceFormatted);
 
-      const result = await response.json();
-      if (result.success) {
-        setBalance(BigInt(result.balance));
-      } else {
-        throw new Error(result.error || "获取余额失败");
-      }
+      if (balanceNum === 0) return "0";
+
+      // 根据decimals调整最小显示阈值
+      const minThreshold = Math.pow(10, -Math.min(6, balanceData.decimals));
+      if (balanceNum < minThreshold) return `< ${minThreshold}`;
+
+      // 对于6位小数的代币，如果余额正好是最小单位，也显示为小于阈值
+      if (balanceData.decimals === 6 && balanceNum === minThreshold)
+        return `< ${minThreshold}`;
+
+      if (balanceNum < 0.01) return balanceNum.toFixed(6);
+      if (balanceNum < 1) return balanceNum.toFixed(4);
+      if (balanceNum < 1000) return balanceNum.toFixed(2);
+      if (balanceNum < 1000000) return `${(balanceNum / 1000).toFixed(2)}K`;
+      return `${(balanceNum / 1000000).toFixed(2)}M`;
+    } catch (err) {
+      return "0";
+    }
+  }, [balanceData]);
+
+  // 手动刷新
+  const refresh = useCallback(async () => {
+    try {
+      setError(null);
+      await refetch();
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "获取原生代币余额失败";
       setError(errorMessage);
       console.error("获取原生代币余额失败:", err);
-
-      // 使用模拟数据作为fallback
-      setBalance(BigInt("1500000000000000000")); // 1.5 ETH/BNB
-    } finally {
-      setIsLoading(false);
     }
-  }, [userAddress]);
+  }, [refetch]);
 
-  // 格式化显示
-  const formatted = useMemo(() => {
-    if (balance === BigInt(0)) return "0";
-
-    try {
-      const balanceFormatted = formatUnits(balance, 18);
-      const balanceNum = parseFloat(balanceFormatted);
-
-      if (balanceNum < 0.000001) return "< 0.000001";
-      if (balanceNum < 0.01) return balanceNum.toFixed(6);
-      if (balanceNum < 1) return balanceNum.toFixed(4);
-      return balanceNum.toFixed(3);
-    } catch (err) {
-      return "0";
-    }
-  }, [balance]);
-
-  // 初始加载和地址变化时重新获取
+  // 处理余额错误
   useEffect(() => {
-    fetchNativeBalance();
-  }, [fetchNativeBalance]);
+    if (balanceError) {
+      setError(balanceError.message);
+    } else {
+      setError(null);
+    }
+  }, [balanceError]);
 
   return {
-    balance,
+    balance: balanceData?.value || BigInt(0),
     formatted,
     isLoading,
     error,
-    refresh: fetchNativeBalance,
+    refresh,
   };
 }
 
