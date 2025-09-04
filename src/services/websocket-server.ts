@@ -75,6 +75,13 @@ export class KlineWebSocketServer {
   public start(): Promise<void> {
     return new Promise((resolve, reject) => {
       try {
+        // 检查是否已经在运行
+        if (this.isRunning) {
+          console.log(`WebSocket server is already running on port ${this.port}`);
+          resolve();
+          return;
+        }
+
         // 创建HTTP服务器
         this.server = createServer();
         
@@ -582,9 +589,6 @@ export function stopKlineWebSocketServer(): Promise<void> {
 
 export function broadcastKlineUpdate(network: string, pairAddress: string): void {
   const klineData = getCachedKlineData(network, pairAddress);
-  
-  console.log(`[DEBUG] broadcastKlineUpdate called for ${network}:${pairAddress}`);
-  console.log(`[DEBUG] Found ${klineData.length} kline records in cache`);
   
   
   klineWebSocketServer.broadcastKlineUpdate(network, pairAddress);

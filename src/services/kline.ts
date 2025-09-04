@@ -281,8 +281,7 @@ export class KlineAggregationService {
     const timestamp = tradeData.timestamp || Date.now();
     const { amount, price, address: pairAddress, network } = tradeData;
     
-    console.log(`处理交易数据: ${network}:${pairAddress}, 价格: ${price}, 数量: ${amount}`);
-    
+
     // 确保该交易对的自动K线生成已启动
     this.ensureKlineGeneration(network, pairAddress);
     
@@ -295,7 +294,6 @@ export class KlineAggregationService {
         // 更新K线数据
         klineCache.updateKline(kline, price, amount);
         
-        console.log(`更新K线 ${interval}: ${network}:${pairAddress}, OHLC: ${kline.open_price}/${kline.high_price}/${kline.low_price}/${kline.close_price}`);
       } catch (error) {
         console.error(`处理K线数据失败 ${interval}:`, error);
       }
@@ -469,7 +467,6 @@ export class KlineAggregationService {
       // 广播K线更新
       broadcastKlineUpdate(network, pairAddress);
       
-      console.log(`自动生成K线: ${network}:${pairAddress}:${interval} at ${new Date(periodStart).toISOString()}, 参考价格: ${referencePrice}`);
     } catch (error) {
       console.error(`生成空K线失败: ${network}:${pairAddress}:${interval}`, error);
     }
