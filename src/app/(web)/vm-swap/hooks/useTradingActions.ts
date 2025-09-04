@@ -11,12 +11,19 @@ import POOL_ABI from '@/abi/Pool.json';
 /**
  * 安全数字格式化 - 防止科学计数法导致的 viem 解析错误
  */
-function formatSafeNumber(value: string | number, decimals: number = 18): string {
-  const num = typeof value === 'string' ? parseFloat(value) : value;
+function formatSafeNumber(value: string | number): string {
+  const str = typeof value === 'number' ? value.toString() : value;
+  const num = parseFloat(str);
+  
   if (isNaN(num) || num <= 0) return '0';
   
-  // 使用 toFixed 确保不会产生科学计数法
-  return num.toFixed(decimals).replace(/\.?0+$/, '');
+  // 如果是科学计数法，转换为标准小数格式
+  if (str.includes('e') || str.includes('E')) {
+    return num.toFixed(20).replace(/\.?0+$/, '');
+  }
+  
+  // 保持原始字符串格式，确保精度
+  return str;
 }
 
 export interface TradeParams {
@@ -59,7 +66,7 @@ export function useTradingActions() {
       
       // 修复：直接使用amount作为ETH数量，不需要乘以价格
       // amount 就是用户想要花费的ETH数量
-      const safeAmount = formatSafeNumber(amount, 18);
+      const safeAmount = formatSafeNumber(amount);
       const totalETHWei = parseUnits(safeAmount, 18);
       
       console.log('🚀 Launch Pool 买入交易:', { 
@@ -142,10 +149,51 @@ export function useTradingActions() {
       
       const { tokenSymbol, amount, price, memeTokenInfo } = params;
       const decimals = 18;
-      const safeAmount = formatSafeNumber(amount, decimals);
-      const amountWei = parseUnits(safeAmount, decimals);
+      const safeAmount = formatSafeNumber(amount);
+      
+      // 数值验证 - 确保转换合理
+      const numAmount = parseFloat(safeAmount);
+      if (isNaN(numAmount) || numAmount <= 0) {
+        toast.error(`代币数量无效: ${amount}`);
+        setTransactionStatus('error');
+        return false;
+      }
+      
+      // 合理性检查 - 代币数量不应该超过常理
+      if (numAmount > 1000000000) { // 10亿代币
+        toast.error(`代币数量过大，请检查输入: ${numAmount}`);
+        setTransactionStatus('error');
+        return false;
+      }
+      
+      // 精度检查 - 确保小数位数合理
+      const decimalPlaces = safeAmount.split('.')[1]?.length || 0;
+      let finalAmount = safeAmount;
+      if (decimalPlaces > 18) {
+        console.warn(`代币数量精度过高，将截断到18位小数: ${safeAmount}`);
+        finalAmount = numAmount.toFixed(18).replace(/\.?0+$/, '');
+      }
+      
+      const amountWei = parseUnits(finalAmount, decimals);
 
-      console.log('🔥 Launch Pool 卖出交易:', { tokenSymbol, amount, price, memeTokenInfo });
+      console.log('🔥 Launch Pool 卖出交易:', { 
+        tokenSymbol, 
+        原始代币数量: amount,
+        安全格式化数量: safeAmount,
+        amount, 
+        price, 
+        memeTokenInfo 
+      });
+      
+      console.log('💰 代币数量转换过程:', {
+        原始输入: amount,
+        格式化后: safeAmount,
+        最终数量: finalAmount,
+        Wei数量: amountWei.toString(),
+        类型检查: typeof amount,
+        parseFloat结果: parseFloat(amount),
+        精度检查: { 小数位数: decimalPlaces, 超过18位: decimalPlaces > 18 }
+      });
 
       // 获取代币地址
       const tokenInfo = memeTokenInfo || getTokenConfigBySymbol(tokenSymbol);
@@ -165,7 +213,7 @@ export function useTradingActions() {
 
       // 注意：calPresaleSwapTokenForETH 是 view 函数，这里为了简化直接进行交易
       // 在生产环境中，应该先调用这个函数预估 ETH 数量
-      console.log('💰 准备执行 Launch Pool 卖出交易');
+      console.log('💰 准备执行 Launch Pool 卖出交易', amountWei);
 
       // 执行 Launch Pool 预售卖出
       const transactionHash = await writeContract({
