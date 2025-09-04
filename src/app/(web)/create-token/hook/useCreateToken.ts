@@ -1,3 +1,5 @@
+'use client'
+
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { useTokenFactory, type CreateTokenResult } from '@/hooks/launchPool/useTokenFactory';
@@ -109,14 +111,31 @@ export function useCreateToken() {
     setIsCreating(true);
     
     try {
-      // 上传图片到IPFS或其他存储服务
+      // 上传图片到本地存储
       let imageUrl = '';
       if (imageFile) {
-        // 这里应该实际上传到IPFS
-        // 目前使用临时URL作为占位符
-        imageUrl = URL.createObjectURL(imageFile);
-        // TODO: 实现IPFS上传
-        // imageUrl = await uploadToIPFS(imageFile);
+        try {
+          const formData = new FormData();
+          formData.append('image', imageFile);
+          
+          const uploadResponse = await fetch('/api/upload-image', {
+            method: 'POST',
+            body: formData,
+          });
+          
+          const uploadResult = await uploadResponse.json();
+          
+          if (uploadResult.success) {
+            imageUrl = uploadResult.data.imageUrl;
+          } else {
+            throw new Error(uploadResult.error || '图片上传失败');
+          }
+        } catch (uploadError) {
+          console.error('图片上传失败:', uploadError);
+          toast.error('图片上传失败，请重试');
+          setIsCreating(false);
+          return;
+        }
       }
 
       // 根据是否有金额决定调用哪个合约方法

@@ -95,11 +95,17 @@
         - 显示交易对价格、24小时变化、交易量、流动性等数据
         - 最近交易记录和市场统计信息
         - 价格图表和趋势分析
+        - 实时K线图表显示，支持多种时间间隔（30秒、1分钟、5分钟等）
       数据展示:
         - 实时价格图表和趋势分析
         - 交易对性能对比
         - 用户交易历史
         - 平台总体统计数据
+        - K线数据实时更新和历史数据查询
+      K线数据集成:
+        - 通过WebSocket连接获取实时K线数据更新
+        - 支持订阅特定交易对的K线数据
+        - 自动处理连接重连和错误恢复
 
     核心组件:
       AppkitProvider src/components/AppkitProvider.tsx:
@@ -193,14 +199,61 @@
           - 返回: "{ status, timestamp, services }"
           - 功能: 检查各个服务模块的运行状态
 
+    src/app/api/klines/route.ts:
+      功能:
+        - K线数据查询接口
+        - 历史K线数据获取
+      业务依赖路径: 从SQLite数据库查询K线数据
+      方法:
+        GET:
+          - 参数: network, pairAddress, interval?, startTime?, endTime?, limit?
+          - 权限: 公开访问
+          - 返回: "{ klines[], totalCount, pagination }"
+          - 调用: K线数据库查询方法
+
+    K线WebSocket服务 src/services/websocket-server.ts:
+      功能:
+        - 实时K线数据推送服务
+        - WebSocket连接管理和订阅处理
+        - 自动K线数据生成和广播
+      服务架构:
+        - WebSocket服务器运行在端口8081
+        - 支持多客户端连接和订阅管理
+        - 实时广播K线数据更新给订阅客户端
+      使用方法:
+        连接: "ws://localhost:8081/kline-ws"
+        订阅消息格式: "{ type: 'subscribe', data: { network: 'ethereum', pairAddress: '0x...' } }"
+        接收数据格式: "{ type: 'kline_update', data: { network, pairAddress, klines[] }, timestamp }"
+      技术实现:
+        - 使用ws库实现WebSocket服务
+        - 内存缓存K线数据以提升推送性能
+        - 支持ping/pong心跳检测和连接保活
+        - 自动处理客户端断线和重连
+
+    K线生成服务 src/services/kline.ts:
+      功能:
+        - 自动K线数据生成和管理
+        - 多时间间隔K线数据支持（30秒、1分钟、5分钟等）
+        - 交易事件监听和K线数据更新
+      技术实现:
+        - 定时任务生成K线数据
+        - SQLite数据库存储K线历史数据
+        - 内存缓存最新K线数据
+        - 支持交易对动态添加和管理
+      启动方式:
+        - 开发测试: "npx tsx src/test/start-kline-for-pair.ts"
+        - 生产环境: 通过 src/lib/startup.ts 自动启动
+
     数据库工具 src/app/api/utils/sqlite-db.ts:
       功能:
         - SQLite 数据库连接和操作工具
         - 数据缓存和同步机制
+        - K线数据表管理和查询优化
       技术实现:
         - 提供数据库连接池管理
         - 实现数据缓存策略
         - 支持事务处理和错误恢复
+        - K线数据表结构优化和索引管理
 
     通用技术要求:
       - 所有接口都需要完善的错误处理和日志记录
@@ -210,3 +263,38 @@
       - 支持多链兼容性设计
       - 实时数据同步和事件监听机制
       - 完整的单元测试和集成测试覆盖
+      - K线WebSocket服务需要支持高并发连接和数据推送
+      - K线数据生成需要保证时间精度和数据一致性
+      - WebSocket连接需要实现自动重连和错误恢复机制
+      - K线数据存储需要优化查询性能和存储空间
+
+  K线功能使用指南:
+    开发环境启动:
+      1. 启动K线生成服务: "npx tsx src/test/start-kline-for-pair.ts"
+      2. WebSocket服务会自动在端口8081启动
+      3. 使用测试客户端验证: "node src/test/websocket-test-client.js"
+    
+    前端集成:
+      1. 在Analytics页面中集成WebSocket客户端
+      2. 连接到 "ws://localhost:8081/kline-ws"
+      3. 发送订阅消息订阅特定交易对的K线数据
+      4. 监听 "kline_update" 消息获取实时K线数据
+    
+    API使用:
+      1. 查询历史K线数据: "GET /api/klines?network=ethereum&pairAddress=0x..."
+      2. 支持时间范围查询和分页
+      3. 返回标准OHLCV格式的K线数据
+    
+    数据格式:
+      K线数据结构:
+        - network: 网络名称（如 "ethereum"）
+        - pair_address: 交易对合约地址
+        - interval_type: 时间间隔（"30s", "1m", "5m" 等）
+        - timestamp: 时间戳（毫秒）
+        - open_price: 开盘价
+        - high_price: 最高价
+        - low_price: 最低价
+        - close_price: 收盘价
+        - volume: 交易量
+        - trade_count: 交易次数
+        - is_complete: 是否完成（布尔值）

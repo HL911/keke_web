@@ -241,13 +241,26 @@ export async function updateMemeTokenPrice(
     updateFields.push('volume_24h = ?');
     params.push(Number(volume_24h));
   }
-
   params.push(address);
 
-  await executeUpdate(
-    `UPDATE meme_tokens SET ${updateFields.join(', ')} WHERE address = ?`,
-    params
-  );
+  const sql = `UPDATE meme_tokens SET ${updateFields.join(', ')} WHERE address = ?`;
+  
+  // 第一次尝试更新
+  const database = await getDatabase();
+  const result = await database.run(sql, params);
+  
+  // 检查是否成功更新了记录
+  if ((result.changes || 0) === 0) {
+    // 如果没有更新任何记录，延迟1秒后重试一次
+    await new Promise(resolve => setTimeout(resolve, 4000));
+    
+    const retryResult = await database.run(sql, params);
+    
+    // 如果重试后仍然没有更新记录，记录警告日志
+    if ((retryResult.changes || 0) === 0) {
+      console.warn(`Failed to update meme token price for address: ${address}. Token may not exist in database.`);
+    }
+  }
 }
 
 /**

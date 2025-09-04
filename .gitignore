@@ -42,4 +42,7 @@ data/*.db
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-/data/*.db
+
+*.db*
+*.sqlite
+public/meme-token-logos/*

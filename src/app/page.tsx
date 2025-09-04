@@ -21,6 +21,12 @@ export default function HomePage() {
   const features = [
     {
       icon: <Coins className="w-8 h-8 text-blue-600" />,
+      title: "虚拟池交易",
+      description: "快速、安全地交换各种数字资产",
+      href: "/vm-swap",
+    },
+    {
+      icon: <Coins className="w-8 h-8 text-blue-600" />,
       title: "交易",
       description: "快速、安全地交换各种数字资产",
       href: "/swap",

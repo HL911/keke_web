@@ -1,3 +1,5 @@
+"use client";
+
 import { useChainId } from "wagmi";
 import { sepolia, foundry } from "viem/chains";
 import FOUNDRY_ADDRESS from "@/config/address/foundry.json";
@@ -13,6 +15,11 @@ interface NetworkContracts {
   kekeswapRouterAddress: string;
   kekeswapFactoryAddress: string;
   wethAddress: string;
+  masterAddress: string;
+  syrupBarAddress: string;
+  kekeTokenAddress: string;
+  weth9Address: string;
+  weth9KekePairAddress: string;
 }
 
 // 不同网络的合约地址配置
@@ -72,4 +79,39 @@ export function useKekeswapRouterAddress(): string | null {
  */
 export function useKekeswapFactoryAddress(): string | null {
   return useContractAddress("kekeswapFactoryAddress");
+}
+
+/**
+ * 获取 Master 合约地址
+ */
+export function useMasterAddress(): string | null {
+  return useContractAddress("masterAddress");
+}
+
+/**
+ * 获取 SyrupBar 合约地址
+ */
+export function useSyrupBarAddress(): string | null {
+  return useContractAddress("syrupBarAddress");
+}
+
+/**
+ * 获取 KekeToken 合约地址
+ */
+export function useKekeTokenAddress(): string | null {
+  return useContractAddress("kekeTokenAddress");
+}
+
+/**
+ * 获取 WETH9 合约地址
+ */
+export function useWeth9Address(): string | null {
+  return useContractAddress("weth9Address");
+}
+
+/**
+ * 获取 WETH9-Keke 交易对合约地址
+ */
+export function useWeth9KekePairAddress(): string | null {
+  return useContractAddress("weth9KekePairAddress");
 }
