@@ -211,7 +211,8 @@ export default function TradingPanel({ symbol = "KEKE", currentPrice = "0.42814"
         const allowanceFormatted = parseFloat(formatUnits(tokenAllowance, tokenDecimals));
         if (parseFloat(sellAmount) > allowanceFormatted) {
           toast.info(`正在授权 ${symbol}...`);
-          const approved = await approveToken(symbol, sellAmount);
+          const approved = await approveToken(symbol, sellAmount, memeTokenInfo);
+          console.log('approved', approved);
           if (!approved) {
             toast.error('授权失败，无法继续卖出');
             return;
@@ -221,7 +222,7 @@ export default function TradingPanel({ symbol = "KEKE", currentPrice = "0.42814"
       } else {
         // 如果无法获取授权状态，尝试授权
         toast.info(`正在授权 ${symbol}...`);
-        const approved = await approveToken(symbol, sellAmount);
+        const approved = await approveToken(symbol, sellAmount, memeTokenInfo);
         if (!approved) {
           toast.error('授权失败，无法继续卖出');
           return;
