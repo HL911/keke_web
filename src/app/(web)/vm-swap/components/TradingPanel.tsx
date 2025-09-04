@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +25,7 @@ export default function TradingPanel({ symbol = "KEKE", currentPrice = "0.42814"
   const [ethAmount, setEthAmount] = useState(""); // 统一使用ETH数量
   const [tokenAmount, setTokenAmount] = useState(""); // 代币数量
   const [needsApproval, setNeedsApproval] = useState(false);
+  const lastSymbolRef = useRef<string>(""); // 追踪上次的symbol，防止重复调用
 
   // 获取代币小数位数 - 使用静态配置，避免重复的API调用
   const getTokenDecimals = useCallback((tokenSymbol: string) => {
@@ -52,11 +53,15 @@ export default function TradingPanel({ symbol = "KEKE", currentPrice = "0.42814"
     memeTokenInfo,
     fetchMemeTokenInfo,
   } = useTrading();
-  useEffect(()=>{
-    fetchMemeTokenInfo(symbol)
-  },[symbol])
-  // 注意：memeTokenInfo 现在从页面组件通过 useTrading 传递过来
-  // 不再在这里重复调用 fetchMemeTokenInfo，避免无限循环
+  
+  // 防止重复调用 fetchMemeTokenInfo，只在 symbol 真正改变时调用
+  useEffect(() => {
+    if (symbol && symbol !== lastSymbolRef.current) {
+      console.log('Symbol 变化，获取代币信息:', { from: lastSymbolRef.current, to: symbol });
+      lastSymbolRef.current = symbol;
+      fetchMemeTokenInfo(symbol);
+    }
+  }, [symbol]); // 只依赖 symbol，不依赖 fetchMemeTokenInfo 函数
   useEffect(() => {
     console.log('TradingPanel 收到代币信息:', symbol, memeTokenInfo);
   }, [symbol, memeTokenInfo]);

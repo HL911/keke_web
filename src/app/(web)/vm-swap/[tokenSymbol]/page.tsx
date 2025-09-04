@@ -159,12 +159,15 @@ export default function VMSwapPage({ params }: VMSwapPageProps) {
       <div className="max-w-7xl mx-auto p-4 grid grid-cols-12 gap-6 ">
         {/* 左侧：图表区域 */}
         <div className="col-span-8">
-          {/* <TradingChart 
+          {
+            memeTokenInfo?.address && <TradingChart 
             symbol={`${decodedTokenSymbol}/ETH`}
             tokenName={decodedTokenSymbol}
-            pairAddress={pairInfo.pairAddress || "0x742d35Cc6861C4C687b12F1C3e56b12e9E3CCD0C"}
+            pairAddress={memeTokenInfo?.address}
             network="ethereum"
-          /> */}
+          />
+          }
+          
         </div>
         {/* 右侧：交易面板和订单簿 */}
         <div className="col-span-4 space-y-6">
@@ -177,7 +180,7 @@ export default function VMSwapPage({ params }: VMSwapPageProps) {
         
       </div>
       {/* Toast notifications */}
-      <Toaster position="top-right" />
+      {/* <Toaster position="top-right" /> */}
       <OrderBook />
     </div>
   );

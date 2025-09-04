@@ -7,6 +7,19 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useWebSocket, KlineData } from '@/hooks/useWebSocket';
 
+// API返回的K线数据格式
+interface ApiKlineData {
+  network: string;
+  pair_address: string;
+  interval_type: string;
+  timestamp: string;
+  open: string;
+  high: string;
+  low: string;
+  close: string;
+  volume: string;
+}
+
 interface TradingChartProps {
   symbol?: string;
   tokenName?: string;
@@ -62,11 +75,143 @@ export default function TradingChart({
   const [priceChange, setPriceChange] = useState("+0.11%");
   const [volume, setVolume] = useState("940");
   const [chartData, setChartData] = useState<CandlestickData[]>(() => 
-    externalData || generateInitialData()
+    externalData || [] // 初始为空，等待从API加载
   );
   const [seriesType, setSeriesType] = useState<'candlestick' | 'line' | 'area' | 'mock'>('candlestick');
   const [wsConnected, setWsConnected] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [historyLoadError, setHistoryLoadError] = useState<string | null>(null);
+  const isInitializedRef = useRef(false); // 防止重复初始化
+
+  // API数据转换：将API返回的数据转换为图表所需格式
+  const convertApiDataToCandlestick = useCallback((apiData: ApiKlineData[]): CandlestickData[] => {
+    console.log('🔄 转换API数据到图表格式:', {
+      totalRecords: apiData.length,
+      firstRecord: apiData[0],
+      samplePrices: apiData.slice(0, 3).map(item => ({
+        timestamp: item.timestamp,
+        open: item.open,
+        close: item.close,
+        parsedOpen: parseFloat(item.open),
+        parsedClose: parseFloat(item.close)
+      }))
+    });
+
+    const convertedData = apiData.map((item, index) => {
+      const timeValue = new Date(item.timestamp).getTime() / 1000;
+      let openValue = parseFloat(item.open);
+      let highValue = parseFloat(item.high);
+      let lowValue = parseFloat(item.low);
+      let closeValue = parseFloat(item.close);
+
+      // 检查数据有效性
+      if (isNaN(timeValue) || isNaN(openValue) || isNaN(highValue) || isNaN(lowValue) || isNaN(closeValue)) {
+        console.warn(`⚠️ 第${index + 1}条数据包含无效数值:`, {
+          timestamp: item.timestamp,
+          timeValue,
+          openValue,
+          highValue,
+          lowValue,
+          closeValue
+        });
+      }
+
+      // 检查价格是否过小，如果过小则缩放
+      const PRICE_THRESHOLD = 1e-6;
+      const PRICE_SCALE = 1e9; // 将纳米级别的价格放大到可见范围
+
+      if (openValue > 0 && openValue < PRICE_THRESHOLD) {
+        console.warn(`⚠️ 第${index + 1}条数据价格过小，进行缩放:`, {
+          originalOpen: openValue,
+          scientific: item.open,
+          scaledOpen: openValue * PRICE_SCALE
+        });
+        
+        // 缩放所有价格
+        openValue *= PRICE_SCALE;
+        highValue *= PRICE_SCALE;
+        lowValue *= PRICE_SCALE;
+        closeValue *= PRICE_SCALE;
+      }
+
+      return {
+        time: timeValue as Time,
+        open: openValue,
+        high: highValue,
+        low: lowValue,
+        close: closeValue,
+      };
+    }).sort((a, b) => (a.time as number) - (b.time as number)); // 按时间升序排列
+
+    console.log('✅ 数据转换完成:', {
+      convertedCount: convertedData.length,
+      firstConverted: convertedData[0],
+      lastConverted: convertedData[convertedData.length - 1],
+      priceRange: {
+        minPrice: Math.min(...convertedData.map(d => Math.min(d.open, d.high, d.low, d.close))),
+        maxPrice: Math.max(...convertedData.map(d => Math.max(d.open, d.high, d.low, d.close)))
+      }
+    });
+
+    return convertedData;
+  }, []);
+
+  // 获取历史K线数据
+  const fetchHistoricalKlines = useCallback(async (
+    network: string,
+    pairAddress: string,
+    interval: string = '1m',
+    limit: number = 100
+  ): Promise<CandlestickData[]> => {
+    // 防止重复请求
+    if (isLoadingHistory) {
+      console.log('⚠️ 历史数据正在加载中，跳过重复请求');
+      return [];
+    }
+
+    try {
+      setIsLoadingHistory(true);
+      setHistoryLoadError(null);
+
+      const params = new URLSearchParams({
+        network,
+        pair_address: pairAddress,
+        interval,
+        limit: limit.toString()
+      });
+
+      const response = await fetch(`/api/klines?${params}`);
+      
+      if (!response.ok) {
+        throw new Error(`API请求失败: ${response.status} ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      
+      if (!result.success) {
+        throw new Error(result.error || 'API返回错误');
+      }
+
+      // 转换数据格式
+      const candlestickData = convertApiDataToCandlestick(result.data || []);
+      
+      console.log(`✅ 成功获取 ${candlestickData.length} 条历史K线数据`);
+      return candlestickData;
+      
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : '获取历史数据失败';
+      console.error('获取历史K线数据失败:', errorMessage);
+      setHistoryLoadError(errorMessage);
+      
+      // 返回模拟数据作为后备方案
+      console.log('📊 使用模拟数据作为后备方案');
+      return generateInitialData();
+      
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  }, [convertApiDataToCandlestick, isLoadingHistory]);
 
   // WebSocket K线数据处理
   const handleKlineUpdate = useCallback((klineData: KlineData) => {
@@ -183,6 +328,12 @@ export default function TradingChart({
       rightPriceScale: {
         borderColor: '#2B2B43',
         textColor: '#DDD',
+        scaleMargins: {
+          top: 0.1,
+          bottom: 0.1,
+        },
+        // 自动价格格式化
+        autoScale: true,
       },
       timeScale: {
         borderColor: '#2B2B43',
@@ -289,6 +440,8 @@ export default function TradingChart({
 
   // 更新价格信息 - 支持不同的数据格式
   const updatePriceInfo = useCallback((data: any[]) => {
+    console.log('📊 更新价格信息:', { dataLength: data.length, sampleData: data.slice(0, 2) });
+    
     if (data.length > 0) {
       const lastCandle = data[data.length - 1];
       const firstCandle = data[0];
@@ -297,11 +450,41 @@ export default function TradingChart({
       const currentPrice = lastCandle.close || lastCandle.value || 0;
       const initialPrice = firstCandle.close || firstCandle.value || 0;
       
-      setCurrentPrice(currentPrice.toFixed(5));
+      console.log('💰 价格计算:', {
+        currentPrice,
+        initialPrice,
+        lastCandle,
+        firstCandle
+      });
+      
+      // 格式化价格显示
+      let formattedPrice;
+      if (currentPrice > 1) {
+        formattedPrice = currentPrice.toFixed(5);
+      } else if (currentPrice > 0.001) {
+        formattedPrice = currentPrice.toFixed(8);
+      } else if (currentPrice > 0) {
+        // 对于非常小的价格，使用科学计数法
+        formattedPrice = currentPrice.toExponential(2);
+      } else {
+        formattedPrice = "0.00000";
+      }
+      
+      setCurrentPrice(formattedPrice);
       
       if (initialPrice > 0) {
         const change = ((currentPrice - initialPrice) / initialPrice) * 100;
         setPriceChange(`${change >= 0 ? '+' : ''}${change.toFixed(2)}%`);
+        
+        console.log('📈 价格变化:', {
+          change: `${change >= 0 ? '+' : ''}${change.toFixed(2)}%`,
+          calculation: { currentPrice, initialPrice, change }
+        });
+      }
+      
+      // 更新成交量显示
+      if (lastCandle.volume !== undefined) {
+        setVolume(lastCandle.volume.toString());
       }
     }
   }, []);
@@ -325,6 +508,13 @@ export default function TradingChart({
     
     try {
       // 设置初始数据，模拟 wrapper 的 data prop
+      console.log('📊 准备设置图表数据:', {
+        chartDataLength: chartData.length,
+        detectedSeriesType,
+        hasValidSeries: !!(candlestickSeries && typeof candlestickSeries.setData === 'function'),
+        sampleChartData: chartData.slice(0, 3)
+      });
+
       if (candlestickSeries && typeof candlestickSeries.setData === 'function') {
         // 根据图表类型转换数据格式
         let dataToSet: any;
@@ -332,28 +522,43 @@ export default function TradingChart({
         if (detectedSeriesType === 'candlestick') {
           // 蜡烛图使用原始数据
           dataToSet = chartData;
+          console.log('🕯️ 使用蜡烛图格式，数据样例:', dataToSet.slice(0, 2));
         } else if (detectedSeriesType === 'line' || detectedSeriesType === 'area') {
           // 线条图和区域图只需要 time 和 value（使用 close 价格）
           dataToSet = chartData.map(item => ({
             time: item.time,
             value: item.close,
           }));
+          console.log('📈 使用线条/区域图格式，数据样例:', dataToSet.slice(0, 2));
         } else {
           // mock 类型不需要实际设置数据
           dataToSet = chartData;
+          console.log('🎭 使用模拟格式');
         }
         
         if (detectedSeriesType !== 'mock') {
+          console.log('⚡ 正在设置图表数据...', {
+            seriesType: detectedSeriesType,
+            dataLength: dataToSet.length,
+            firstData: dataToSet[0],
+            lastData: dataToSet[dataToSet.length - 1]
+          });
+          
           candlestickSeries.setData(dataToSet);
-          console.log(`✅ 图表数据设置成功 (${detectedSeriesType} 格式)`);
+          console.log(`✅ 图表数据设置成功 (${detectedSeriesType} 格式, ${dataToSet.length} 条数据)`);
         }
         updatePriceInfo(chartData);
       } else {
-        console.warn('series.setData 方法不可用，仅更新价格信息');
+        console.warn('⚠️ series.setData 方法不可用，仅更新价格信息');
         updatePriceInfo(chartData);
       }
     } catch (error) {
-      console.error('设置图表数据失败:', error);
+      console.error('❌ 设置图表数据失败:', error);
+      console.error('失败时的数据状态:', {
+        chartDataLength: chartData.length,
+        detectedSeriesType,
+        sampleData: chartData.slice(0, 3)
+      });
       // 即使设置数据失败，也要更新价格信息
       updatePriceInfo(chartData);
     }
@@ -395,14 +600,49 @@ export default function TradingChart({
     }
   }, [externalData, updatePriceInfo]);
 
-  // WebSocket 连接和订阅
+  // 数据初始化
+  useEffect(() => {
+    // 如果提供了外部数据，直接使用外部数据
+    if (externalData) {
+      setChartData(externalData);
+      isInitializedRef.current = true;
+      return;
+    }
+
+    // 防止重复初始化
+    if (isInitializedRef.current) {
+      return;
+    }
+
+    // 初始化历史数据
+    const initializeData = async () => {
+      console.log('🚀 开始初始化图表数据...');
+      isInitializedRef.current = true;
+      
+      // 获取历史K线数据
+      const historicalData = await fetchHistoricalKlines(network, pairAddress, '1m', 100);
+      
+      if (historicalData.length > 0) {
+        setChartData(historicalData);
+        console.log('✅ 历史数据初始化完成', historicalData);
+      } else {
+        // 如果没有历史数据，使用模拟数据
+        console.log('⚠️ 未获取到历史数据，使用模拟数据');
+        setChartData(generateInitialData());
+      }
+    };
+
+    initializeData();
+  }, [externalData, network, pairAddress]); // 只依赖基础值，不依赖函数
+
+  // WebSocket 连接（单独的 useEffect，避免与数据初始化混合）
   useEffect(() => {
     // 如果提供了外部数据，不连接 WebSocket
     if (externalData) {
       return;
     }
 
-    // 连接 WebSocket
+    // 连接 WebSocket 获取实时数据
     connect();
 
     // 订阅 K线数据
@@ -420,7 +660,7 @@ export default function TradingChart({
     return () => {
       clearTimeout(timer);
     };
-  }, [externalData, network, pairAddress, connect, subscribe]);
+  }, [externalData, network, pairAddress]); // 只在基础参数变化时重新连接
 
   return (
     <Card className="bg-black text-white border-gray-800">
@@ -429,6 +669,38 @@ export default function TradingChart({
           <div className="flex items-center gap-4">
             <CardTitle className="text-xl">{symbol}</CardTitle>
             <div className="flex items-center gap-2">
+              {/* 历史数据加载状态 */}
+              <Badge 
+                variant="outline"
+                className={`text-xs cursor-help mr-2 ${
+                  isLoadingHistory
+                    ? 'border-blue-400 text-blue-400'
+                    : historyLoadError
+                    ? 'border-orange-400 text-orange-400'
+                    : chartData.length > 0
+                    ? 'border-green-400 text-green-400'
+                    : 'border-gray-400 text-gray-400'
+                }`}
+                title={
+                  isLoadingHistory 
+                    ? '正在加载历史K线数据...'
+                    : historyLoadError
+                    ? `历史数据加载失败: ${historyLoadError}`
+                    : chartData.length > 0
+                    ? `历史数据已加载 (${chartData.length} 条记录)`
+                    : '暂无历史数据'
+                }
+              >
+                {isLoadingHistory 
+                  ? '加载中...'
+                  : historyLoadError
+                  ? '历史数据异常'
+                  : chartData.length > 0
+                  ? `历史数据 (${chartData.length})`
+                  : '无历史数据'
+                }
+              </Badge>
+
               {/* WebSocket 连接状态指示 */}
               <Badge 
                 variant="outline" 
@@ -531,7 +803,20 @@ export default function TradingChart({
                   {priceChange}
                 </div>
                 <div className="text-sm text-gray-400 mt-4">
-                  {connectionError ? (
+                  {isLoadingHistory ? (
+                    <div className="space-y-2">
+                      <div className="animate-pulse text-blue-400">⏳ 正在加载历史K线数据...</div>
+                      <div className="text-xs">请稍候，正在从API获取历史数据</div>
+                    </div>
+                  ) : historyLoadError ? (
+                    <div className="space-y-2">
+                      <div className="text-orange-400">⚠️ 历史数据加载失败</div>
+                      <div className="text-xs max-w-md break-words">{historyLoadError}</div>
+                      <div className="text-xs text-blue-400 mt-2">
+                        💡 提示: 使用模拟数据替代，请检查API服务是否正常
+                      </div>
+                    </div>
+                  ) : connectionError ? (
                     <div className="space-y-2">
                       <div className="text-red-400">⚠️ 实时数据连接失败</div>
                       <div className="text-xs max-w-md break-words">{connectionError}</div>

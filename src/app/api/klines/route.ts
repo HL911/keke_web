@@ -1,6 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getKlines } from '../utils/klines-queries';
 
+// 网络名称到 Chain ID 的映射
+const NETWORK_MAPPING: Record<string, string> = {
+  'ethereum': '11155111',    // 开发环境使用 Sepolia 测试网
+  'sepolia': '11155111',     // Sepolia 测试网
+  'mainnet': '1',            // 以太坊主网
+  'goerli': '5',             // Goerli 测试网 (已弃用)
+  'polygon': '137',          // Polygon 主网
+  'mumbai': '80001',         // Polygon Mumbai 测试网
+  'bsc': '56',               // BSC 主网
+  'bsc-testnet': '97',       // BSC 测试网
+  'arbitrum': '42161',       // Arbitrum One
+  'optimism': '10',          // Optimism
+  'localhost': '31337',      // 本地开发网络
+  'foundry': '31337',        // Foundry 本地网络
+};
+
+// 将网络名称转换为 Chain ID
+function normalizeNetworkId(network: string): string {
+  // 如果已经是数字 ID，直接返回
+  if (/^\d+$/.test(network)) {
+    return network;
+  }
+  
+  // 查找映射
+  const chainId = NETWORK_MAPPING[network.toLowerCase()];
+  if (chainId) {
+    return chainId;
+  }
+  
+  // 如果没有找到映射，返回原值（可能是自定义网络）
+  return network;
+}
+
 /**
  * GET /api/klines
  * 获取历史K线数据
@@ -35,13 +68,13 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     
     // 获取查询参数
-    const network = searchParams.get('network');
+    const rawNetwork = searchParams.get('network');
     const pairAddress = searchParams.get('pair_address');
     const limitParam = searchParams.get('limit');
     const interval = searchParams.get('interval') || '1m';
     
     // 验证必需参数
-    if (!network) {
+    if (!rawNetwork) {
       return NextResponse.json(
         { 
           success: false, 
@@ -50,6 +83,9 @@ export async function GET(request: NextRequest) {
         { status: 400 }
       );
     }
+    
+    // 标准化网络ID
+    const network = normalizeNetworkId(rawNetwork);
     
     if (!pairAddress) {
       return NextResponse.json(
@@ -91,6 +127,16 @@ export async function GET(request: NextRequest) {
       limit = Math.min(parsedLimit, 1000);
     }
     
+    // 添加调试信息
+    console.log('🔍 K线查询参数:', {
+      rawNetwork,
+      normalizedNetwork: network,
+      pairAddress,
+      intervalType: interval,
+      limit,
+      orderDirection: 'DESC'
+    });
+    
     // 查询K线数据
     const klines = await getKlines({
       network,
@@ -100,15 +146,26 @@ export async function GET(request: NextRequest) {
       orderDirection: 'DESC'
     });
     
+    console.log('✅ K线查询结果:', {
+      resultCount: klines.length,
+      firstResult: klines[0] || null
+    });
+    
     return NextResponse.json({
       success: true,
       data: klines,
       count: klines.length,
       params: {
-        network,
+        network: rawNetwork,          // 原始网络参数
+        normalizedNetwork: network,   // 标准化后的网络参数
         pair_address: pairAddress,
         interval,
         limit
+      },
+      debug: {
+        networkMapping: { from: rawNetwork, to: network },
+        queryParams: { network, pairAddress, intervalType: interval, limit },
+        resultCount: klines.length
       }
     });
     

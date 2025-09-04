@@ -16,29 +16,94 @@ export interface Kline {
 }
 
 // K线时间间隔类型
-export type KlineInterval = '30s' | '1m' | '15m';
+export type KlineInterval = '30s' | '1m' | '15m' | '1h' | '4h' | '1d';
+
+// 查询选项基础接口
+export interface BaseKlineQueryOptions {
+  network?: string;
+  pairAddress?: string;
+  intervalType?: KlineInterval;
+  startTime?: string;
+  endTime?: string;
+}
+
+// 分页查询选项
+export interface PaginatedKlineQueryOptions extends BaseKlineQueryOptions {
+  limit?: number;
+  offset?: number;
+  orderDirection?: 'ASC' | 'DESC';
+}
+
+// 输入验证函数
+function validateKlineInterval(interval: string): interval is KlineInterval {
+  return ['30s', '1m', '15m', '1h', '4h', '1d'].includes(interval);
+}
+
+function validateNetwork(network: string): boolean {
+  return /^[a-zA-Z0-9]+$/.test(network) && network.length > 0;
+}
+
+function validateAddress(address: string): boolean {
+  return /^0x[a-fA-F0-9]{40}$/.test(address);
+}
+
+function validateTimestamp(timestamp: string): boolean {
+  const date = new Date(timestamp);
+  return !isNaN(date.getTime());
+}
 
 // 插入K线数据
 export async function insertKline(kline: Omit<Kline, 'id' | 'created_at'>): Promise<number> {
+  // 输入验证
+  if (!validateNetwork(kline.network)) {
+    throw new Error('Invalid network format');
+  }
+  
+  if (!validateAddress(kline.pair_address)) {
+    throw new Error('Invalid pair address format');
+  }
+  
+  if (!validateKlineInterval(kline.interval_type)) {
+    throw new Error(`Invalid interval type: ${kline.interval_type}`);
+  }
+  
+  if (!validateTimestamp(kline.timestamp)) {
+    throw new Error('Invalid timestamp format');
+  }
+  
+  // 验证价格数据格式
+  const prices = [kline.open, kline.high, kline.low, kline.close, kline.volume];
+  for (const price of prices) {
+    if (isNaN(parseFloat(price)) || parseFloat(price) < 0) {
+      throw new Error(`Invalid price data: ${price}`);
+    }
+  }
+  
   const db = await getDatabase();
-  const result = await db.run(
-    `INSERT INTO klines (
-      network, pair_address, interval_type, timestamp, 
-      open, high, low, close, volume
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [
-      kline.network,
-      kline.pair_address,
-      kline.interval_type,
-      kline.timestamp,
-      kline.open,
-      kline.high,
-      kline.low,
-      kline.close,
-      kline.volume
-    ]
-  );
-  return result.lastID as number;
+  
+  try {
+    const result = await db.run(
+      `INSERT INTO klines (
+        network, pair_address, interval_type, timestamp, 
+        open, high, low, close, volume
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        kline.network,
+        kline.pair_address,
+        kline.interval_type,
+        kline.timestamp,
+        kline.open,
+        kline.high,
+        kline.low,
+        kline.close,
+        kline.volume
+      ]
+    );
+    return result.lastID as number;
+  } catch (error) {
+    console.error('Failed to insert kline:', error);
+    throw new Error(`Failed to insert kline data: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
 }
 
 // 批量插入K线数据
@@ -116,16 +181,35 @@ export async function getKlineById(id: number): Promise<Kline | null> {
 }
 
 // 查询K线数据列表
-export async function getKlines(options: {
-  network?: string;
-  pairAddress?: string;
-  intervalType?: KlineInterval;
-  startTime?: string;
-  endTime?: string;
-  limit?: number;
-  offset?: number;
-  orderDirection?: 'ASC' | 'DESC';
-}): Promise<Kline[]> {
+export async function getKlines(options: PaginatedKlineQueryOptions): Promise<Kline[]> {
+  // 输入验证
+  if (options.network && !validateNetwork(options.network)) {
+    throw new Error('Invalid network format');
+  }
+  
+  if (options.pairAddress && !validateAddress(options.pairAddress)) {
+    throw new Error('Invalid pair address format');
+  }
+  
+  if (options.intervalType && !validateKlineInterval(options.intervalType)) {
+    throw new Error(`Invalid interval type: ${options.intervalType}`);
+  }
+  
+  if (options.startTime && !validateTimestamp(options.startTime)) {
+    throw new Error('Invalid startTime format');
+  }
+  
+  if (options.endTime && !validateTimestamp(options.endTime)) {
+    throw new Error('Invalid endTime format');
+  }
+  
+  if (options.limit && (options.limit <= 0 || options.limit > 10000)) {
+    throw new Error('Limit must be between 1 and 10000');
+  }
+  
+  if (options.offset && options.offset < 0) {
+    throw new Error('Offset must be non-negative');
+  }
   const db = await getDatabase();
   
   let sql = 'SELECT * FROM klines WHERE 1=1';
@@ -284,23 +368,41 @@ export async function getKlineStatistics(options: {
   };
   
   // 获取首尾价格计算涨跌幅
-  const firstKline = await db.get(
-    `SELECT open FROM klines 
-     WHERE network = ? AND pair_address = ? AND interval_type = ?
-     ${options.startTime ? 'AND timestamp >= ?' : ''}
-     ${options.endTime ? 'AND timestamp <= ?' : ''}
-     ORDER BY timestamp ASC LIMIT 1`,
-    params
-  ) as { open: string } | undefined;
+  // 构建首个K线查询
+  let firstKlineSql = `SELECT open FROM klines WHERE network = ? AND pair_address = ? AND interval_type = ?`;
+  const firstKlineParams: any[] = [options.network, options.pairAddress, options.intervalType];
   
-  const lastKline = await db.get(
-    `SELECT close FROM klines 
-     WHERE network = ? AND pair_address = ? AND interval_type = ?
-     ${options.startTime ? 'AND timestamp >= ?' : ''}
-     ${options.endTime ? 'AND timestamp <= ?' : ''}
-     ORDER BY timestamp DESC LIMIT 1`,
-    params
-  ) as { close: string } | undefined;
+  if (options.startTime) {
+    firstKlineSql += ' AND timestamp >= ?';
+    firstKlineParams.push(options.startTime);
+  }
+  
+  if (options.endTime) {
+    firstKlineSql += ' AND timestamp <= ?';
+    firstKlineParams.push(options.endTime);
+  }
+  
+  firstKlineSql += ' ORDER BY timestamp ASC LIMIT 1';
+  
+  const firstKline = await db.get(firstKlineSql, firstKlineParams) as { open: string } | undefined;
+  
+  // 构建最后一个K线查询
+  let lastKlineSql = `SELECT close FROM klines WHERE network = ? AND pair_address = ? AND interval_type = ?`;
+  const lastKlineParams: any[] = [options.network, options.pairAddress, options.intervalType];
+  
+  if (options.startTime) {
+    lastKlineSql += ' AND timestamp >= ?';
+    lastKlineParams.push(options.startTime);
+  }
+  
+  if (options.endTime) {
+    lastKlineSql += ' AND timestamp <= ?';
+    lastKlineParams.push(options.endTime);
+  }
+  
+  lastKlineSql += ' ORDER BY timestamp DESC LIMIT 1';
+  
+  const lastKline = await db.get(lastKlineSql, lastKlineParams) as { close: string } | undefined;
   
   let priceChange = '0';
   let priceChangePercent = '0';
@@ -481,6 +583,10 @@ export async function cleanupOldKlines(options: {
   intervalType?: KlineInterval;
   keepDays: number;
 }): Promise<number> {
+  if (options.keepDays <= 0) {
+    throw new Error('keepDays must be positive');
+  }
+  
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - options.keepDays);
   
@@ -490,4 +596,221 @@ export async function cleanupOldKlines(options: {
     intervalType: options.intervalType,
     olderThan: cutoffDate.toISOString()
   });
+}
+
+// 获取K线数据的时间范围
+export async function getKlineTimeRange(options: BaseKlineQueryOptions): Promise<{
+  earliest: string | null;
+  latest: string | null;
+  count: number;
+}> {
+  const db = await getDatabase();
+  
+  let sql = `
+    SELECT 
+      MIN(timestamp) as earliest,
+      MAX(timestamp) as latest,
+      COUNT(*) as count
+    FROM klines WHERE 1=1
+  `;
+  const params: any[] = [];
+  
+  if (options.network) {
+    sql += ' AND network = ?';
+    params.push(options.network);
+  }
+  
+  if (options.pairAddress) {
+    sql += ' AND pair_address = ?';
+    params.push(options.pairAddress);
+  }
+  
+  if (options.intervalType) {
+    sql += ' AND interval_type = ?';
+    params.push(options.intervalType);
+  }
+  
+  const result = await db.get(sql, params) as {
+    earliest: string | null;
+    latest: string | null;
+    count: number;
+  };
+  
+  return result;
+}
+
+// 检查K线数据缺口
+export async function detectKlineGaps(options: {
+  network: string;
+  pairAddress: string;
+  intervalType: KlineInterval;
+  startTime?: string;
+  endTime?: string;
+}): Promise<Array<{
+  gapStart: string;
+  gapEnd: string;
+  expectedCount: number;
+  actualCount: number;
+}>> {
+  // 根据时间间隔计算期望的间隔毫秒数
+  const intervalMs = getIntervalMilliseconds(options.intervalType);
+  
+  const klines = await getKlines({
+    network: options.network,
+    pairAddress: options.pairAddress,
+    intervalType: options.intervalType,
+    startTime: options.startTime,
+    endTime: options.endTime,
+    orderDirection: 'ASC'
+  });
+  
+  const gaps: Array<{
+    gapStart: string;
+    gapEnd: string;
+    expectedCount: number;
+    actualCount: number;
+  }> = [];
+  
+  for (let i = 1; i < klines.length; i++) {
+    const prevTime = new Date(klines[i - 1].timestamp).getTime();
+    const currTime = new Date(klines[i].timestamp).getTime();
+    const timeDiff = currTime - prevTime;
+    
+    // 如果时间差超过了一个间隔，则可能存在缺口
+    if (timeDiff > intervalMs * 1.5) {
+      const expectedCount = Math.floor(timeDiff / intervalMs) - 1;
+      gaps.push({
+        gapStart: klines[i - 1].timestamp,
+        gapEnd: klines[i].timestamp,
+        expectedCount,
+        actualCount: 0
+      });
+    }
+  }
+  
+  return gaps;
+}
+
+// 根据时间间隔类型获取毫秒数
+function getIntervalMilliseconds(interval: KlineInterval): number {
+  const intervals: Record<KlineInterval, number> = {
+    '30s': 30 * 1000,
+    '1m': 60 * 1000,
+    '15m': 15 * 60 * 1000,
+    '1h': 60 * 60 * 1000,
+    '4h': 4 * 60 * 60 * 1000,
+    '1d': 24 * 60 * 60 * 1000
+  };
+  
+  return intervals[interval];
+}
+
+// 获取K线数据概览
+export async function getKlineOverview(options?: {
+  network?: string;
+  pairAddress?: string;
+}): Promise<{
+  totalKlines: number;
+  networksCount: number;
+  pairsCount: number;
+  intervals: KlineInterval[];
+  earliestTimestamp: string | null;
+  latestTimestamp: string | null;
+}> {
+  const db = await getDatabase();
+  
+  let whereClause = 'WHERE 1=1';
+  const params: any[] = [];
+  
+  if (options?.network) {
+    whereClause += ' AND network = ?';
+    params.push(options.network);
+  }
+  
+  if (options?.pairAddress) {
+    whereClause += ' AND pair_address = ?';
+    params.push(options.pairAddress);
+  }
+  
+  // 获取基本统计信息
+  const basicStats = await db.get(`
+    SELECT 
+      COUNT(*) as totalKlines,
+      COUNT(DISTINCT network) as networksCount,
+      COUNT(DISTINCT pair_address) as pairsCount,
+      MIN(timestamp) as earliestTimestamp,
+      MAX(timestamp) as latestTimestamp
+    FROM klines ${whereClause}
+  `, params) as {
+    totalKlines: number;
+    networksCount: number;
+    pairsCount: number;
+    earliestTimestamp: string | null;
+    latestTimestamp: string | null;
+  };
+  
+  // 获取支持的时间间隔
+  const intervalRows = await db.all(`
+    SELECT DISTINCT interval_type 
+    FROM klines ${whereClause} 
+    ORDER BY interval_type
+  `, params) as { interval_type: KlineInterval }[];
+  
+  return {
+    ...basicStats,
+    intervals: intervalRows.map(row => row.interval_type)
+  };
+}
+
+// 批量更新K线数据（基于时间戳）
+export async function bulkUpdateKlines(
+  network: string,
+  pairAddress: string,
+  intervalType: KlineInterval,
+  updates: Array<{
+    timestamp: string;
+    open?: string;
+    high?: string;
+    low?: string;
+    close?: string;
+    volume?: string;
+  }>
+): Promise<number> {
+  const db = await getDatabase();
+  let updatedCount = 0;
+  
+  try {
+    await db.exec('BEGIN TRANSACTION');
+    
+    for (const update of updates) {
+      const fields: string[] = [];
+      const params: any[] = [];
+      
+      Object.entries(update).forEach(([key, value]) => {
+        if (key !== 'timestamp' && value !== undefined) {
+          fields.push(`${key} = ?`);
+          params.push(value);
+        }
+      });
+      
+      if (fields.length > 0) {
+        params.push(network, pairAddress, intervalType, update.timestamp);
+        
+        const result = await db.run(
+          `UPDATE klines SET ${fields.join(', ')} 
+           WHERE network = ? AND pair_address = ? AND interval_type = ? AND timestamp = ?`,
+          params
+        );
+        
+        updatedCount += result.changes || 0;
+      }
+    }
+    
+    await db.exec('COMMIT');
+    return updatedCount;
+    
+  } catch (error) {
+    await db.exec('ROLLBACK');
+    throw error;
+  }
 }
