@@ -309,6 +309,12 @@ export function useAddLiquidity(
 
   // 处理实时计算结果
   useEffect(() => {
+    // 如果没有交易对信息，禁用自动计算
+    if (!liquidityPairAddress || !pairReserves) {
+      setIsAutoCalculating(false);
+      return;
+    }
+
     if (isAutoCalculating && !isCalculating) {
       // 检查当前输入是否为空或为0，如果是则不进行自动计算
       const isCurrentInputEmpty =
@@ -353,6 +359,8 @@ export function useAddLiquidity(
     activeInput,
     amountA,
     amountB,
+    liquidityPairAddress, // 添加依赖
+    pairReserves, // 添加依赖
   ]);
 
   // 处理计算错误
