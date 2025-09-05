@@ -765,30 +765,11 @@ export default function TradingChart({
             </div>
           </div>
           <div className="flex gap-2">
-            <Button variant="ghost" size="sm" className="text-gray-400">1m</Button>
-            <Button variant="ghost" size="sm" className="text-gray-400">5m</Button>
-            <Button variant="ghost" size="sm" className="text-white bg-gray-800">15m</Button>
-            <Button variant="ghost" size="sm" className="text-gray-400">1h</Button>
-            <Button variant="ghost" size="sm" className="text-gray-400">4h</Button>
-            <Button variant="ghost" size="sm" className="text-gray-400">1d</Button>
+          <Button variant="ghost" size="sm" className="text-gray-400">30s</Button>
+            <Button variant="ghost" size="sm" className="text-white bg-gray-800">1m</Button>
+            <Button variant="ghost" size="sm" className="text-gray-400">5m</Button>            
           </div>
-        </div>
-        <div className="flex items-center gap-6 text-sm">
-          <div>
-            <span className="text-gray-400">价格: </span>
-            <span className="text-white font-bold">${currentPrice}</span>
-          </div>
-          <div>
-            <span className="text-gray-400">24h变化: </span>
-            <span className={`font-bold ${priceChange.startsWith('+') ? 'text-green-400' : 'text-red-400'}`}>
-              {priceChange}
-            </span>
-          </div>
-          <div>
-            <span className="text-gray-400">成交量: </span>
-            <span className="text-white">{volume}</span>
-          </div>
-        </div>
+        </div>        
       </CardHeader>
       <CardContent className="p-0">
         <div ref={chartContainerRef} className="w-full h-[400px] relative">

@@ -7,8 +7,8 @@ import { TrendingUp, TrendingDown, Volume2, Users, Activity } from "lucide-react
 import { useAccount } from "wagmi";
 import { Toaster } from "sonner";
 import { TradingChart, TradingPanel, OrderBook } from '../components';
-import { usePoolPrice } from '@/hooks/usePoolPrice';
 import { useTokenInfo } from '../hooks/useTokenInfo';
+import { useMemeTokens } from '../../trending/hook/useMemeTokens';
 
 interface VMSwapPageProps {
   params: {
@@ -20,14 +20,80 @@ export default function VMSwapPage({ params }: VMSwapPageProps) {
   const { address } = useAccount();
   const { tokenSymbol } = params;
   
+  // 数字格式化函数 - 参考 TokenList.tsx
+  const formatNumber = (num: number | undefined) => {
+    if (!num) return '0';
+    if (num >= 1000000000) {
+      return `${(num / 1000000000).toFixed(1)}B`;
+    }
+    if (num >= 1000000) {
+      return `${(num / 1000000).toFixed(1)}M`;
+    }
+    if (num >= 1000) {
+      return `${(num / 1000).toFixed(1)}K`;
+    }
+    return num.toFixed(2);
+  };
+
+  // 价格格式化函数 - 参考 TokenList.tsx
+  const formatPrice = (price: number | undefined) => {
+    if (!price) return '$0.00';
+    if (price < 0.01) {
+      // 将小数转换为字符串
+      const priceStr = price.toString();
+      
+      // 检查是否为科学计数法
+      if (priceStr.includes('e')) {
+        const [base, exponent] = priceStr.split('e');
+        const exp = Math.abs(parseInt(exponent));
+        
+        // 获取有效数字
+        const significantDigits = base.replace('.', '').replace('-', '');
+        
+        // 格式化为 0.0₈44873 形式
+        if (exp > 1) {
+          const subscriptNumbers = ['₀', '₁', '₂', '₃', '₄', '₅', '₆', '₇', '₈', '₉'];
+          const subscriptExp = (exp - 1).toString().split('').map(digit => subscriptNumbers[parseInt(digit)]).join('');
+          return `$0.0${subscriptExp}${significantDigits.slice(0, 5)}`;
+        }
+      }
+      
+      // 处理普通小数
+      const match = priceStr.match(/^0\.(0+)([1-9]\d*)/);
+      if (match) {
+        const zeros = match[1].length;
+        const digits = match[2];
+        
+        if (zeros >= 4) {
+          const subscriptNumbers = ['₀', '₁', '₂', '₃', '₄', '₅', '₆', '₇', '₈', '₉'];
+          const subscriptZeros = zeros.toString().split('').map(digit => subscriptNumbers[parseInt(digit)]).join('');
+          return `$0.0${subscriptZeros}${digits.slice(0, 5)}`;
+        }
+      }
+      
+      return `$${price.toFixed(8)}`;
+    }
+    return `$${price.toFixed(4)}`;
+  };
+  
   // 解码 URL 参数（防止特殊字符问题）
   const decodedTokenSymbol = decodeURIComponent(tokenSymbol);
   
   // 获取代币信息
   const { fetchMemeTokenInfo, memeTokenInfo, memeTokenLoading } = useTokenInfo();
   
-  // 获取基于Pool合约的价格信息
-  const poolPrice = usePoolPrice(memeTokenInfo?.address, 3000); // 假设ETH价格为3000 USD
+  // 获取meme代币列表数据 - 替换poolPrice数据源
+  const { tokens, loading: tokensLoading, error: tokensError } = useMemeTokens({
+    search: decodedTokenSymbol,
+    orderBy: 'market_cap',
+    orderDirection: 'DESC',
+    limit: 10
+  });
+  
+  // 找到当前代币的数据
+  const currentTokenData = tokens.find(token => 
+    token.symbol.toLowerCase() === decodedTokenSymbol.toLowerCase()
+  );
   
   // 获取 meme 代币信息 - 当代币符号变化时重置并获取新信息
   useEffect(() => {
@@ -38,27 +104,34 @@ export default function VMSwapPage({ params }: VMSwapPageProps) {
     }
   }, [decodedTokenSymbol]); // 移除 fetchMemeTokenInfo 依赖，避免循环
 
-  // 使用 Pool 合约的真实数据或回退到默认值
-  const currentPrice = poolPrice.priceInETH || "0.0000001";
-  const priceChange = poolPrice.priceChange24h || "+0.00%";
+  // 使用 MemeToken API 数据
+  const currentPrice = currentTokenData?.price_usd 
+    ? (currentTokenData.price_usd / 3000).toFixed(8) // 假设ETH价格为3000USD，转换为ETH价格
+    : "0.0000001";
+  
+  // 计算价格变化百分比
+  const priceChange = currentTokenData?.price_change_24h 
+    ? `${currentTokenData.price_change_24h >= 0 ? '+' : ''}${currentTokenData.price_change_24h.toFixed(2)}%`
+    : "+0.00%";
+  
   const marketStats = {
-    volume24h: poolPrice.volume24h || "$0",
-    marketCap: poolPrice.marketCap || "$0",
+    volume24h: `$${formatNumber(currentTokenData?.volume_24h)}`,
+    marketCap: `$${formatNumber(currentTokenData?.market_cap)}`,
+    priceUSD: currentTokenData?.price_usd ? formatPrice(currentTokenData.price_usd) : '$0.00',
     holders: "1,245", // 暂时保持模拟数据，后续可从API获取
     transactions: "8,932", // 暂时保持模拟数据，后续可从API获取
     
-    // 新增的储备量信息
-    virtualTokenReserves: poolPrice.virtualTokenReserves,
-    virtualEthReserves: poolPrice.virtualEthReserves,
-    realTokenReserves: poolPrice.realTokenReserves,
-    realEthReserves: poolPrice.realEthReserves,
+    // 代币信息
+    tokenInfo: currentTokenData,
+    isLoading: tokensLoading || memeTokenLoading,
+    error: tokensError,
     
-    // 交易状态
-    presaleOpen: poolPrice.presaleOpen,
-    tradingOpen: poolPrice.tradingOpen,
-    poolFail: poolPrice.poolFail,
+    // 交易状态（基于API数据推断）
+    presaleOpen: false, // API数据中没有这个信息，设为false
+    tradingOpen: true,  // 如果有价格数据说明已开放交易
+    poolFail: false,    // API数据中没有这个信息，设为false
   };
-
+  console.log('marketStats', marketStats)
   return (
     <div className="min-h-screen bg-black text-white">
       {/* 顶部统计栏 */}
@@ -80,10 +153,10 @@ export default function VMSwapPage({ params }: VMSwapPageProps) {
                 <div className="text-center">
                   <div className="text-2xl font-bold">
                     {currentPrice} ETH
-                    {(poolPrice.isLoading || memeTokenLoading) && (
+                    {marketStats.isLoading && (
                       <span className="ml-2 text-sm text-gray-400">(加载中...)</span>
                     )}
-                    {poolPrice.error && (
+                    {marketStats.error && (
                       <span className="ml-2 text-sm text-red-400">(加载失败)</span>
                     )}
                   </div>
@@ -91,9 +164,9 @@ export default function VMSwapPage({ params }: VMSwapPageProps) {
                     {priceChange.startsWith('+') ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
                     {priceChange}
                   </div>
-                  {poolPrice.priceInUSD && (
+                  {currentTokenData?.price_usd && (
                     <div className="text-sm text-gray-400">
-                      ≈ ${poolPrice.priceInUSD} USD
+                      ≈ {marketStats.priceUSD}
                     </div>
                   )}
                 </div>
@@ -125,29 +198,24 @@ export default function VMSwapPage({ params }: VMSwapPageProps) {
             </div>
             
             <div className="flex gap-3">
-              {marketStats.presaleOpen && (
-                <Badge variant="outline" className="border-orange-400 text-orange-400">
-                  预售中
-                </Badge>
-              )}
-              {marketStats.tradingOpen && (
+              {marketStats.tradingOpen && currentTokenData && (
                 <Badge variant="outline" className="border-green-400 text-green-400">
                   交易开放
                 </Badge>
-              )}
-              {marketStats.poolFail && (
-                <Badge variant="outline" className="border-red-400 text-red-400">
-                  池子失败
-                </Badge>
-              )}
-              {memeTokenInfo && (
-                <Badge variant="outline" className="border-blue-400 text-blue-400">
-                  已验证
+              )}              
+              {currentTokenData && (
+                <Badge variant="outline" className="border-purple-400 text-purple-400">
+                  Meme代币
                 </Badge>
               )}
               {address && (
                 <Badge variant="outline" className="border-yellow-400 text-yellow-400">
                   已连接
+                </Badge>
+              )}
+              {marketStats.isLoading && (
+                <Badge variant="outline" className="border-gray-400 text-gray-400">
+                  加载中...
                 </Badge>
               )}
             </div>
@@ -181,7 +249,7 @@ export default function VMSwapPage({ params }: VMSwapPageProps) {
       </div>
       {/* Toast notifications */}
       {/* <Toaster position="top-right" /> */}
-      <OrderBook />
+      {/* <OrderBook /> */}
     </div>
   );
 }
