@@ -307,12 +307,12 @@ export default function TradingPanel({ symbol = "KEKE", currentPrice = "0.42814"
   };
 
   return (
-    <Card className="bg-gray-900 text-white border-gray-700">
+    <Card className="bg-white text-gray-900 border-gray-200">
       <CardHeader className="pb-4">
         <CardTitle className="text-lg">现货交易</CardTitle>
         <div className="space-y-2">
           <div className="flex gap-2 text-sm">
-            <span className="text-gray-400">可用余额:</span>
+            <span className="text-gray-600">可用余额:</span>
             <span>{symbol}: {balances[symbol]}</span>
             <span>{shouldUseNativeETH ? 'ETH' : 'WETH'}: {balances.ETH}</span>
           </div>
@@ -324,11 +324,11 @@ export default function TradingPanel({ symbol = "KEKE", currentPrice = "0.42814"
             
             return effectivePriceNum > 0 && (
               <div className="flex gap-2 text-sm">
-                <span className="text-gray-400">实时价格:</span>
-                <span className="text-green-400">{effectivePrice} ETH</span>
-                <span className="text-gray-400">(≈ ${effectivePriceUSD})</span>
+                <span className="text-gray-600">实时价格:</span>
+                <span className="text-green-600">{effectivePrice} ETH</span>
+                <span className="text-gray-600">(≈ ${effectivePriceUSD})</span>
                 {!poolPrice.priceInETH || parseFloat(poolPrice.priceInETH) === 0 ? (
-                  <span className="text-yellow-400 text-xs">(估算)</span>
+                  <span className="text-amber-600 text-xs">(估算)</span>
                 ) : null}
               </div>
             );
@@ -337,49 +337,49 @@ export default function TradingPanel({ symbol = "KEKE", currentPrice = "0.42814"
           <div className="flex gap-2 items-center">            
             
             {poolPrice.presaleOpen && (
-              <Badge variant="outline" className="text-xs text-orange-400 border-orange-400">
+              <Badge variant="outline" className="text-xs text-orange-600 border-orange-600">
                 预售开放
               </Badge>
             )}
             
             {poolPrice.tradingOpen && (
-              <Badge variant="outline" className="text-xs text-green-400 border-green-400">
+              <Badge variant="outline" className="text-xs text-green-600 border-green-600">
                 交易开放
               </Badge>
             )}
             
             {poolPrice.poolFail && (
-              <Badge variant="outline" className="text-xs text-red-400 border-red-400">
+              <Badge variant="outline" className="text-xs text-red-600 border-red-600">
                 池子失败
               </Badge>
             )}
             
             {shouldUseNativeETH && (
-              <Badge variant="outline" className="text-xs text-blue-400 border-blue-400">
+              <Badge variant="outline" className="text-xs text-blue-600 border-blue-600">
                 使用原生 ETH
               </Badge>
             )}
             
             {transactionStatus === 'pending' && (
-              <Badge variant="outline" className="text-xs text-orange-400 border-orange-400">
+              <Badge variant="outline" className="text-xs text-orange-600 border-orange-600">
                 交易处理中...
               </Badge>
             )}
             
             {transactionStatus === 'success' && (
-              <Badge variant="outline" className="text-xs text-green-400 border-green-400">
+              <Badge variant="outline" className="text-xs text-green-600 border-green-600">
                 交易已提交
               </Badge>
             )}
             
             {isConfirming && (
-              <Badge variant="outline" className="text-xs text-blue-400 border-blue-400">
+              <Badge variant="outline" className="text-xs text-blue-600 border-blue-600">
                 等待确认...
               </Badge>
             )}
             
             {isConfirmed && (
-              <Badge variant="outline" className="text-xs text-green-400 border-green-400">
+              <Badge variant="outline" className="text-xs text-green-600 border-green-600">
                 交易已确认
               </Badge>
             )}
@@ -388,11 +388,11 @@ export default function TradingPanel({ symbol = "KEKE", currentPrice = "0.42814"
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="buy" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 bg-gray-800">
-            <TabsTrigger value="buy" className="text-green-400 data-[state=active]:bg-green-600">
+          <TabsList className="grid w-full grid-cols-2 bg-gray-100">
+            <TabsTrigger value="buy" className="text-green-600 data-[state=active]:bg-green-600 data-[state=active]:text-white">
               买入 {symbol}
             </TabsTrigger>
-            <TabsTrigger value="sell" className="text-red-400 data-[state=active]:bg-red-600">
+            <TabsTrigger value="sell" className="text-red-600 data-[state=active]:bg-red-600 data-[state=active]:text-white">
               卖出 {symbol}
             </TabsTrigger>
           </TabsList>
@@ -401,7 +401,7 @@ export default function TradingPanel({ symbol = "KEKE", currentPrice = "0.42814"
           <TabsContent value="buy" className="space-y-4 mt-6">
             <div className="space-y-4">
               {/* 余额显示 */}
-              <div className="text-right text-sm text-gray-400">
+              <div className="text-right text-sm text-gray-600">
                 余额: {balances.ETH} ETH
               </div>
               
@@ -411,10 +411,10 @@ export default function TradingPanel({ symbol = "KEKE", currentPrice = "0.42814"
                   type="number"
                   value={ethAmount}
                   onChange={(e) => setEthAmount(e.target.value)}
-                  className="bg-gray-800 border-gray-600 text-white text-lg py-3 pr-16"
+                  className="bg-gray-50 border-gray-300 text-gray-900 text-lg py-3 pr-16"
                   placeholder="0"
                 />
-                <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+                <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-600">
                   ETH
                 </span>
               </div>
@@ -426,7 +426,7 @@ export default function TradingPanel({ symbol = "KEKE", currentPrice = "0.42814"
                     key={amount}
                     variant="outline"
                     size="sm"
-                    className="bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700"
+                    className="bg-gray-100 border-gray-300 text-gray-700 hover:bg-gray-200"
                     onClick={() => setEthAmount(amount.toString())}
                   >
                     {amount}
@@ -445,7 +445,7 @@ export default function TradingPanel({ symbol = "KEKE", currentPrice = "0.42814"
 
               {/* 预计获得代币数量 */}
               {ethAmount && tokenAmount && (
-                <div className="text-center text-sm text-gray-400">
+                <div className="text-center text-sm text-gray-600">
                   {ethAmount} ETH ≈ {parseFloat(tokenAmount).toFixed(2)} {symbol}
                 </div>
               )}
@@ -454,7 +454,7 @@ export default function TradingPanel({ symbol = "KEKE", currentPrice = "0.42814"
                 onClick={handleBuy}
                 className={`w-full font-semibold py-3 ${
                   !isConnected || !ethAmount || parseFloat(balances.ETH) < parseFloat(ethAmount || "0")
-                    ? "bg-green-600/50 text-gray-300"
+                    ? "bg-green-300 text-gray-500"
                     : "bg-green-600 hover:bg-green-700 text-white"
                 }`}
                 disabled={!isConnected || !ethAmount || isLoading || parseFloat(balances.ETH) < parseFloat(ethAmount || "0")}
@@ -477,7 +477,7 @@ export default function TradingPanel({ symbol = "KEKE", currentPrice = "0.42814"
           <TabsContent value="sell" className="space-y-4 mt-6">
             <div className="space-y-4">
               {/* 余额显示 */}
-              <div className="text-right text-sm text-gray-400">
+              <div className="text-right text-sm text-gray-600">
                 余额: {balances[symbol]} {symbol}
               </div>
               
@@ -487,10 +487,10 @@ export default function TradingPanel({ symbol = "KEKE", currentPrice = "0.42814"
                   type="number"
                   value={tokenAmount}
                   onChange={(e) => setTokenAmount(e.target.value)}
-                  className="bg-gray-800 border-gray-600 text-white text-lg py-3 pr-20"
+                  className="bg-gray-50 border-gray-300 text-gray-900 text-lg py-3 pr-20"
                   placeholder="0"
                 />
-                <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+                <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-600">
                   {symbol}
                 </span>
               </div>
@@ -502,7 +502,7 @@ export default function TradingPanel({ symbol = "KEKE", currentPrice = "0.42814"
                     key={percentage}
                     variant="outline"
                     size="sm"
-                    className="bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700"
+                    className="bg-gray-100 border-gray-300 text-gray-700 hover:bg-gray-200"
                     onClick={() => {
                       if (balances[symbol]) {
                         const amount = (parseFloat(balances[symbol]) * percentage).toFixed(4);
@@ -518,7 +518,7 @@ export default function TradingPanel({ symbol = "KEKE", currentPrice = "0.42814"
 
               {/* 预计获得ETH数量 */}
               {tokenAmount && sellQuote.data && (
-                <div className="text-center text-sm text-gray-400">
+                <div className="text-center text-sm text-gray-600">
                   {tokenAmount} {symbol} ≈ {parseFloat(sellQuote.data).toFixed(4)} ETH
                 </div>
               )}
@@ -527,7 +527,7 @@ export default function TradingPanel({ symbol = "KEKE", currentPrice = "0.42814"
                 onClick={handleSell}
                 className={`w-full font-semibold py-3 ${
                   !isConnected || !tokenAmount || parseFloat(balances[symbol]) === 0
-                    ? "bg-red-600/50 text-gray-300"
+                    ? "bg-red-300 text-gray-500"
                     : "bg-red-600 hover:bg-red-700 text-white"
                 }`}
                 disabled={!isConnected || !tokenAmount || isLoading || parseFloat(balances[symbol]) === 0}

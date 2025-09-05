@@ -307,17 +307,17 @@ export default function TradingChart({
       width: chartContainerRef.current.clientWidth,
       height: 400,
       layout: {
-        background: { type: ColorType.Solid, color: '#1a1a1a' },
-        textColor: '#DDD',
+        background: { type: ColorType.Solid, color: '#ffffff' },
+        textColor: '#374151',
       },
       grid: {
         vertLines: {
-          color: '#2B2B43',
+          color: '#e5e7eb',
           style: 0,
           visible: true,
         },
         horzLines: {
-          color: '#2B2B43',
+          color: '#e5e7eb',
           style: 0,
           visible: true,
         },
@@ -326,8 +326,8 @@ export default function TradingChart({
         mode: 1,
       },
       rightPriceScale: {
-        borderColor: '#2B2B43',
-        textColor: '#DDD',
+        borderColor: '#e5e7eb',
+        textColor: '#374151',
         scaleMargins: {
           top: 0.1,
           bottom: 0.1,
@@ -336,7 +336,7 @@ export default function TradingChart({
         autoScale: true,
       },
       timeScale: {
-        borderColor: '#2B2B43',
+        borderColor: '#e5e7eb',
         timeVisible: true,
         secondsVisible: false,
       },
@@ -663,7 +663,7 @@ export default function TradingChart({
   }, [externalData, network, pairAddress]); // 只在基础参数变化时重新连接
 
   return (
-    <Card className="bg-black text-white border-gray-800">
+    <Card className="bg-white text-gray-900 border-gray-200">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -674,12 +674,12 @@ export default function TradingChart({
                 variant="outline"
                 className={`text-xs cursor-help mr-2 ${
                   isLoadingHistory
-                    ? 'border-blue-400 text-blue-400'
+                    ? 'border-blue-600 text-blue-600'
                     : historyLoadError
-                    ? 'border-orange-400 text-orange-400'
+                    ? 'border-orange-600 text-orange-600'
                     : chartData.length > 0
-                    ? 'border-green-400 text-green-400'
-                    : 'border-gray-400 text-gray-400'
+                    ? 'border-green-600 text-green-600'
+                    : 'border-gray-500 text-gray-500'
                 }`}
                 title={
                   isLoadingHistory 
@@ -706,12 +706,12 @@ export default function TradingChart({
                 variant="outline" 
                 className={`text-xs cursor-help ${
                   wsConnected 
-                    ? 'border-green-400 text-green-400' 
+                    ? 'border-green-600 text-green-600' 
                     : isConnecting 
-                    ? 'border-yellow-400 text-yellow-400'
+                    ? 'border-yellow-600 text-yellow-600'
                     : hasReachedMaxRetries
-                    ? 'border-red-500 text-red-500'
-                    : 'border-red-400 text-red-400'
+                    ? 'border-red-600 text-red-600'
+                    : 'border-red-600 text-red-600'
                 }`}
                 title={
                   hasReachedMaxRetries
@@ -744,7 +744,7 @@ export default function TradingChart({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="text-xs h-6 px-2 border-blue-400 text-blue-400 hover:bg-blue-400 hover:text-white"
+                  className="text-xs h-6 px-2 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white"
                   onClick={() => {
                     resetRetryState();
                     connect();
@@ -755,19 +755,19 @@ export default function TradingChart({
                 </Button>
               )}
               <div className="flex gap-2">
-                <Button variant="ghost" size="sm" className="text-green-400 hover:text-green-300">
+                <Button variant="ghost" size="sm" className="text-green-600 hover:text-green-700">
                   买入
                 </Button>
-                <Button variant="ghost" size="sm" className="text-red-400 hover:text-red-300">
+                <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700">
                   卖出
                 </Button>
               </div>
             </div>
           </div>
           <div className="flex gap-2">
-          <Button variant="ghost" size="sm" className="text-gray-400">30s</Button>
-            <Button variant="ghost" size="sm" className="text-white bg-gray-800">1m</Button>
-            <Button variant="ghost" size="sm" className="text-gray-400">5m</Button>            
+          <Button variant="ghost" size="sm" className="text-gray-600">30s</Button>
+            <Button variant="ghost" size="sm" className="text-white bg-gray-600">1m</Button>
+            <Button variant="ghost" size="sm" className="text-gray-600">5m</Button>            
           </div>
         </div>        
       </CardHeader>
@@ -775,34 +775,34 @@ export default function TradingChart({
         <div ref={chartContainerRef} className="w-full h-[400px] relative">
           {/* 如果图表加载失败，显示静态后备UI */}
           {!candlestickSeriesRef.current && (
-            <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
-              <div className="text-center text-white">
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
+              <div className="text-center text-gray-900">
                 <div className="text-6xl mb-4">📈</div>
                 <div className="text-xl mb-2">{symbol}</div>
-                <div className="text-2xl font-bold text-green-400">${currentPrice}</div>
-                <div className={`text-lg ${priceChange.startsWith('+') ? 'text-green-400' : 'text-red-400'}`}>
+                <div className="text-2xl font-bold text-green-600">${currentPrice}</div>
+                <div className={`text-lg ${priceChange.startsWith('+') ? 'text-green-600' : 'text-red-600'}`}>
                   {priceChange}
                 </div>
-                <div className="text-sm text-gray-400 mt-4">
+                <div className="text-sm text-gray-600 mt-4">
                   {isLoadingHistory ? (
                     <div className="space-y-2">
-                      <div className="animate-pulse text-blue-400">⏳ 正在加载历史K线数据...</div>
+                      <div className="animate-pulse text-blue-600">⏳ 正在加载历史K线数据...</div>
                       <div className="text-xs">请稍候，正在从API获取历史数据</div>
                     </div>
                   ) : historyLoadError ? (
                     <div className="space-y-2">
-                      <div className="text-orange-400">⚠️ 历史数据加载失败</div>
+                      <div className="text-orange-600">⚠️ 历史数据加载失败</div>
                       <div className="text-xs max-w-md break-words">{historyLoadError}</div>
-                      <div className="text-xs text-blue-400 mt-2">
+                      <div className="text-xs text-blue-600 mt-2">
                         💡 提示: 使用模拟数据替代，请检查API服务是否正常
                       </div>
                     </div>
                   ) : connectionError ? (
                     <div className="space-y-2">
-                      <div className="text-red-400">⚠️ 实时数据连接失败</div>
+                      <div className="text-red-600">⚠️ 实时数据连接失败</div>
                       <div className="text-xs max-w-md break-words">{connectionError}</div>
-                      <div className="text-xs text-blue-400 mt-2">
-                        💡 提示: 请运行 <code className="bg-gray-800 px-1 rounded">npm run test:websocket</code> 检查连接
+                      <div className="text-xs text-blue-600 mt-2">
+                        💡 提示: 请运行 <code className="bg-gray-200 px-1 rounded">npm run test:websocket</code> 检查连接
                       </div>
                     </div>
                   ) : isConnecting ? (

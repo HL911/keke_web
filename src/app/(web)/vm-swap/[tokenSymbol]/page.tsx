@@ -133,9 +133,9 @@ export default function VMSwapPage({ params }: VMSwapPageProps) {
   };
   console.log('marketStats', marketStats)
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-gray-50 text-gray-900">
       {/* 顶部统计栏 */}
-      <div className="bg-gray-900 border-b border-gray-800 p-4">
+      <div className="bg-white border-b border-gray-200 p-4 shadow-sm">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-8">
@@ -145,7 +145,7 @@ export default function VMSwapPage({ params }: VMSwapPageProps) {
                 </div>
                 <div>
                   <h1 className="text-xl font-bold">{decodedTokenSymbol}/ETH</h1>
-                  <p className="text-sm text-gray-400">{decodedTokenSymbol} Token</p>
+                  <p className="text-sm text-gray-600">{decodedTokenSymbol} Token</p>
                 </div>
               </div>
               
@@ -154,18 +154,18 @@ export default function VMSwapPage({ params }: VMSwapPageProps) {
                   <div className="text-2xl font-bold">
                     {currentPrice} ETH
                     {marketStats.isLoading && (
-                      <span className="ml-2 text-sm text-gray-400">(加载中...)</span>
+                      <span className="ml-2 text-sm text-gray-500">(加载中...)</span>
                     )}
                     {marketStats.error && (
-                      <span className="ml-2 text-sm text-red-400">(加载失败)</span>
+                      <span className="ml-2 text-sm text-red-500">(加载失败)</span>
                     )}
                   </div>
-                  <div className={`text-sm flex items-center gap-1 ${priceChange.startsWith('+') ? 'text-green-400' : 'text-red-400'}`}>
+                  <div className={`text-sm flex items-center gap-1 ${priceChange.startsWith('+') ? 'text-green-600' : 'text-red-600'}`}>
                     {priceChange.startsWith('+') ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
                     {priceChange}
                   </div>
                   {currentTokenData?.price_usd && (
-                    <div className="text-sm text-gray-400">
+                    <div className="text-sm text-gray-600">
                       ≈ {marketStats.priceUSD}
                     </div>
                   )}
@@ -173,21 +173,21 @@ export default function VMSwapPage({ params }: VMSwapPageProps) {
                 
                 <div className="flex gap-6 text-sm">
                   <div className="text-center">
-                    <div className="text-gray-400 flex items-center gap-1">
+                    <div className="text-gray-600 flex items-center gap-1">
                       <Volume2 className="w-4 h-4" />
                       24h成交量
                     </div>
                     <div className="font-semibold">{marketStats.volume24h}</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-gray-400 flex items-center gap-1">
+                    <div className="text-gray-600 flex items-center gap-1">
                       <Activity className="w-4 h-4" />
                       市值
                     </div>
                     <div className="font-semibold">{marketStats.marketCap}</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-gray-400 flex items-center gap-1">
+                    <div className="text-gray-600 flex items-center gap-1">
                       <Users className="w-4 h-4" />
                       持有人
                     </div>
@@ -199,22 +199,22 @@ export default function VMSwapPage({ params }: VMSwapPageProps) {
             
             <div className="flex gap-3">
               {marketStats.tradingOpen && currentTokenData && (
-                <Badge variant="outline" className="border-green-400 text-green-400">
+                <Badge variant="outline" className="border-green-600 text-green-600">
                   交易开放
                 </Badge>
               )}              
               {currentTokenData && (
-                <Badge variant="outline" className="border-purple-400 text-purple-400">
+                <Badge variant="outline" className="border-purple-600 text-purple-600">
                   Meme代币
                 </Badge>
               )}
               {address && (
-                <Badge variant="outline" className="border-yellow-400 text-yellow-400">
+                <Badge variant="outline" className="border-blue-600 text-blue-600">
                   已连接
                 </Badge>
               )}
               {marketStats.isLoading && (
-                <Badge variant="outline" className="border-gray-400 text-gray-400">
+                <Badge variant="outline" className="border-gray-500 text-gray-500">
                   加载中...
                 </Badge>
               )}

@@ -23,7 +23,7 @@
 # misc
 .DS_Store
 *.pem
-
+/docs/vm-swap
 # debug
 npm-debug.log*
 yarn-debug.log*

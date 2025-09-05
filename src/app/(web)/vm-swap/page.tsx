@@ -12,13 +12,13 @@ export default function VMSwapDefaultPage() {
   }, [router]);
 
   return (
-    <div className="min-h-screen bg-black text-white flex items-center justify-center">
+    <div className="min-h-screen bg-gray-50 text-gray-900 flex items-center justify-center">
       <div className="text-center">
         <div className="animate-pulse">
           <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full mx-auto mb-4 flex items-center justify-center">
             <span className="text-white font-bold text-2xl">K</span>
           </div>
-          <p className="text-gray-400">正在跳转到默认交易页面...</p>
+          <p className="text-gray-600">正在跳转到默认交易页面...</p>
         </div>
       </div>
     </div>
