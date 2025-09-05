@@ -66,8 +66,9 @@ export function useTokenBalance({
       if (balanceNum < 0.01) return balanceNum.toFixed(6);
       if (balanceNum < 1) return balanceNum.toFixed(4);
       if (balanceNum < 1000) return balanceNum.toFixed(2);
-      if (balanceNum < 1000000) return `${(balanceNum / 1000).toFixed(2)}K`;
-      return `${(balanceNum / 1000000).toFixed(2)}M`;
+      return balanceNum.toFixed(2);
+      // if (balanceNum < 1000000) return `${(balanceNum / 1000).toFixed(2)}K`;
+      // return `${(balanceNum / 1000000).toFixed(2)}M`;
     } catch (err) {
       return "0";
     }

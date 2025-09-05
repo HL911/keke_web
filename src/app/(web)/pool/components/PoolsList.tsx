@@ -323,7 +323,14 @@ export function PoolsList({
                     <div className="text-gray-900 font-medium">
                       ${formatNumber(pool.tvl_usd)}
                     </div>
-                    <div className="text-xs text-gray-500">总锁定价值</div>
+                    <div className="text-xs text-gray-500 space-y-1">
+                      <div>
+                        {pool.reserve0} {pool.token0_symbol}
+                      </div>
+                      <div>
+                        {pool.reserve1} {pool.token1_symbol}
+                      </div>
+                    </div>
                   </TableCell>
 
                   {/* 24小时交易额 */}

@@ -10,9 +10,9 @@ import {
 } from "@/hooks/useContract";
 import { useAllTokenConfigs } from "@/hooks/tokens/useTokenConfig";
 import {
-  useBidirectionalCalculateAmount,
-  CalculateToken,
-} from "@/hooks/liquidity/useCalculateAmount";
+  useLiquidityCalculation,
+  LiquidityToken,
+} from "@/hooks/liquidity/useLiquidityCalculation";
 import { Token } from "../components/TokenSelector";
 import KekeswapFactoryABI from "@/abi/KekeswapFactory.json";
 
@@ -52,6 +52,14 @@ export interface AddLiquidityState {
   calculatedAmountA: string;
   calculatedAmountB: string;
   isAutoCalculating: boolean; // 是否正在自动计算
+
+  // 储备量信息
+  reserves: {
+    reserve0: string;
+    reserve1: string;
+    ratio: number;
+  } | null;
+  pairAddress: string | null;
 
   // 授权状态
   approvals: Record<string, boolean>;
@@ -95,10 +103,10 @@ export interface AddLiquidityActions {
   setError: (error: string | null) => void;
 }
 
-// 转换Token类型为CalculateToken类型的辅助函数
-const convertToCalculateToken = (
+// 转换Token类型为LiquidityToken类型的辅助函数
+const convertToLiquidityToken = (
   token: Token | null
-): CalculateToken | null => {
+): LiquidityToken | null => {
   if (!token) return null;
   return {
     address: token.address,
@@ -279,9 +287,9 @@ export function useAddLiquidity(
   // 获取swap router实例
   const { addLiquidity, getDeadline, calculateMinAmount } = useSwapRouter();
 
-  // 双向计算
-  const calculateTokenA = convertToCalculateToken(tokenA);
-  const calculateTokenB = convertToCalculateToken(tokenB);
+  // 流动性计算（基于储备量比例）
+  const calculateTokenA = convertToLiquidityToken(tokenA);
+  const calculateTokenB = convertToLiquidityToken(tokenB);
 
   const {
     calculatedAmountA: calculatedAmountAFromHook,
@@ -289,9 +297,11 @@ export function useAddLiquidity(
     isLoading: isCalculating,
     error: calculationErrorFromHook,
     refresh: refreshCalculation,
-  } = useBidirectionalCalculateAmount({
-    tokenA: calculateTokenA!,
-    tokenB: calculateTokenB!,
+    reserves: pairReserves,
+    pairAddress: liquidityPairAddress,
+  } = useLiquidityCalculation({
+    tokenA: calculateTokenA,
+    tokenB: calculateTokenB,
     amountA,
     amountB,
     activeInput,
@@ -676,6 +686,8 @@ export function useAddLiquidity(
     calculatedAmountA,
     calculatedAmountB,
     isAutoCalculating,
+    reserves: pairReserves,
+    pairAddress: liquidityPairAddress,
     approvals: {
       [tokenA?.address || "tokenA"]: tokenAApproval.isApproved,
       [tokenB?.address || "tokenB"]: tokenBApproval.isApproved,
