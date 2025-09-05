@@ -246,13 +246,13 @@ async function createAllTables(): Promise<void> {
     }
     console.log("All indexes created successfully");
 
-    // 插入初始代币数据
-    await insertInitialTokens();
+    // 插入初始代币数据，参数区分本地网络和测试网
+    await insertInitialTokens(false);
     console.log("Initial token data inserted successfully");
 
-    // 插入初始流动性数据
-    await insertInitialLiquidity();
-    console.log("Initial liquidity data inserted successfully");
+    // 插入初始流动性数据，仅在本地测试时插入
+    // await insertFoundryInitialLiquidity();
+    // console.log("Initial liquidity data inserted successfully");
   } catch (error) {
     console.error("Failed to create tables:", error);
     throw error;
@@ -260,13 +260,15 @@ async function createAllTables(): Promise<void> {
 }
 
 /**
- * 插入初始代币数据，仅用于本地测试
+ * 插入初始代币数据
  */
-async function insertInitialTokens(): Promise<void> {
+async function insertInitialTokens(isLocalNetwork: boolean): Promise<void> {
   if (!db) throw new Error("Database not initialized");
 
   try {
-    const initialTokens = [
+    let initialTokens = [];
+    if (isLocalNetwork) {
+      initialTokens = [
       {
         address: FOUNDRY_ADDRESS.kekeTokenAddress,
         symbol: "KEKE",
@@ -316,6 +318,58 @@ async function insertInitialTokens(): Promise<void> {
         logo_uri: "/token-logos/wbtc-logo.png",
       },
     ];
+    } else {
+      initialTokens = [
+      {
+        address: SEPOLIA_ADDRESS.kekeTokenAddress,
+        symbol: "KEKE",
+        name: "Keke Token",
+        decimals: 18,
+        is_verified: true,
+        logo_uri: "/token-logos/keke-logo.svg",
+      },
+      {
+        address: SEPOLIA_ADDRESS.wethAddress,
+        symbol: "WETH",
+        name: "Wrapped Ether",
+        decimals: 18,
+        is_verified: true,
+        logo_uri: "/token-logos/weth-logo.png",
+      },
+      {
+        address: SEPOLIA_ADDRESS.mockUsdtAddress,
+        symbol: "USDT",
+        name: "Tether USD",
+        decimals: 6,
+        is_verified: true,
+        logo_uri: "/token-logos/usdt-logo.png",
+      },
+      {
+        address: SEPOLIA_ADDRESS.mockUsdcAddress,
+        symbol: "USDC",
+        name: "USD Coin",
+        decimals: 6,
+        is_verified: true,
+        logo_uri: "/token-logos/usdc-logo.png",
+      },
+      {
+        address: SEPOLIA_ADDRESS.mockWbnbAddress,
+        symbol: "WBNB",
+        name: "Wrapped BNB",
+        decimals: 18,
+        is_verified: true,
+        logo_uri: "/token-logos/wbnb-logo.png",
+      },
+      {
+        address: SEPOLIA_ADDRESS.mockWbtcAddress,
+        symbol: "WBTC",
+        name: "Wrapped BTC",
+        decimals: 8,
+        is_verified: true,
+        logo_uri: "/token-logos/wbtc-logo.png",
+      },
+    ];
+    }
 
     for (const token of initialTokens) {
       await db.run(
@@ -343,7 +397,7 @@ async function insertInitialTokens(): Promise<void> {
 /**
  * 插入初始流动性数据，仅用于本地测试
  */
-async function insertInitialLiquidity(): Promise<void> {
+async function insertFoundryInitialLiquidity(): Promise<void> {
   if (!db) throw new Error("Database not initialized");
 
   try {
