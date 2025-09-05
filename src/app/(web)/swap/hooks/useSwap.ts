@@ -14,6 +14,7 @@ import {
   CalculateToken,
 } from "@/hooks/liquidity/useCalculateAmount";
 import { Token } from "../../liquidity/components/TokenSelector";
+import { useUpdatePariReserve } from "./useUpdatePariReserve";
 
 export interface SwapParams {
   tokenA: Token | null;
@@ -281,6 +282,50 @@ export function useSwap(
   const routerAddress = useKekeswapRouterAddress();
   const factoryAddress = useKekeswapFactoryAddress();
 
+  // 获取更新储备量的hook
+  const { updateReserves } = useUpdatePariReserve();
+
+  // 获取交易对地址的函数
+  const getPairAddress = useCallback(
+    async (
+      tokenAAddress: string,
+      tokenBAddress: string
+    ): Promise<string | null> => {
+      if (!publicClient || !factoryAddress) return null;
+
+      try {
+        const pairAddress = await publicClient.readContract({
+          address: factoryAddress as `0x${string}`,
+          abi: [
+            {
+              name: "getPair",
+              type: "function",
+              stateMutability: "view",
+              inputs: [
+                { name: "tokenA", type: "address" },
+                { name: "tokenB", type: "address" },
+              ],
+              outputs: [{ name: "pair", type: "address" }],
+            },
+          ],
+          functionName: "getPair",
+          args: [
+            tokenAAddress as `0x${string}`,
+            tokenBAddress as `0x${string}`,
+          ],
+        });
+
+        return pairAddress === "0x0000000000000000000000000000000000000000"
+          ? null
+          : pairAddress;
+      } catch (error) {
+        console.error("获取交易对地址失败:", error);
+        return null;
+      }
+    },
+    [publicClient, factoryAddress]
+  );
+
   // 获取代币授权状态 - 只授权卖出的代币（tokenA）
   const tokenAApproval = useTokenApproval({
     tokenAddress: tokenA?.address || "",
@@ -470,7 +515,30 @@ export function useSwap(
       // 获取交易哈希（从addLiquidity的返回值中获取）
       const transactionHash = result.hash;
 
-      // todo：交易成功后，向数据库中插入一条交易数据
+      // 交易成功后，更新交易对储备量信息
+      try {
+        if (tokenA && tokenB) {
+          const pairAddress = await getPairAddress(
+            tokenA.address,
+            tokenB.address
+          );
+          if (pairAddress) {
+            await updateReserves({
+              pairAddress,
+              token0Address: tokenA.address,
+              token1Address: tokenB.address,
+              token0Decimals: tokenA.decimals,
+              token1Decimals: tokenB.decimals,
+            });
+            console.log("交易对储备量已更新");
+          } else {
+            console.warn("未找到交易对地址，跳过储备量更新");
+          }
+        }
+      } catch (updateError) {
+        console.error("更新交易对储备量失败:", updateError);
+        // 不抛出错误，因为交易已经成功，储备量更新失败不应该影响用户体验
+      }
 
       // 重置表单
       resetForm();
@@ -502,6 +570,8 @@ export function useSwap(
     calculateMinAmount,
     swapExactTokensForTokens,
     resetForm,
+    getPairAddress,
+    updateReserves,
   ]);
 
   // 状态对象
