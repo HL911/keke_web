@@ -22,13 +22,17 @@ export interface Subscription {
 }
 
 export interface KlineData {
+  network: string;
+  pair_address: string;
+  interval_type: string;
   timestamp: string;
   open_price: string;
   high_price: string;
   low_price: string;
   close_price: string;
   volume: string;
-  is_complete: boolean;
+  trade_count?: number;
+  is_complete?: boolean;
 }
 
 interface UseWebSocketOptions {
@@ -216,7 +220,30 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
           
           switch (message.type) {
             case 'kline_update':
-              if (message.data?.kline) {
+              // 处理服务器发送的klines数组数据
+              if (message.data?.klines && Array.isArray(message.data.klines)) {
+                // 处理每个K线数据
+                message.data.klines.forEach((kline: any) => {
+                  // 转换服务端格式到前端格式
+                  const klineData: KlineData = {
+                    network: kline.network || message.data.network,
+                    pair_address: kline.pair_address || message.data.pairAddress,
+                    interval_type: kline.interval_type,
+                    timestamp: typeof kline.timestamp === 'number' ? 
+                      new Date(kline.timestamp).toISOString() : 
+                      kline.timestamp,
+                    open_price: kline.open_price,
+                    high_price: kline.high_price,
+                    low_price: kline.low_price,
+                    close_price: kline.close_price,
+                    volume: kline.volume,
+                    trade_count: kline.trade_count,
+                    is_complete: kline.is_complete
+                  };
+                  onKlineUpdate?.(klineData);
+                });
+              } else if (message.data?.kline) {
+                // 兼容单个kline数据
                 onKlineUpdate?.(message.data.kline);
               }
               break;

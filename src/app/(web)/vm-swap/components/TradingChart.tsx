@@ -215,16 +215,32 @@ export default function TradingChart({
 
   // WebSocket K线数据处理
   const handleKlineUpdate = useCallback((klineData: KlineData) => {
+    console.log('🔄 收到WebSocket K线数据:', klineData);
+    
     // 将服务器的 K线数据转换为图表格式
+    let timestamp: number;
+    if (typeof klineData.timestamp === 'number') {
+      timestamp = klineData.timestamp / 1000; // 服务端可能是毫秒时间戳
+    } else {
+      timestamp = new Date(klineData.timestamp).getTime() / 1000;
+    }
+    
     const newCandlestick: CandlestickData = {
-      time: (new Date(klineData.timestamp).getTime() / 1000) as Time,
+      time: timestamp as Time,
       open: parseFloat(klineData.open_price),
       high: parseFloat(klineData.high_price),
       low: parseFloat(klineData.low_price),
       close: parseFloat(klineData.close_price),
     };
 
-    console.log('收到 K线数据:', newCandlestick);
+    // 验证数据有效性
+    if (isNaN(newCandlestick.open) || isNaN(newCandlestick.high) || 
+        isNaN(newCandlestick.low) || isNaN(newCandlestick.close) || isNaN(timestamp)) {
+      console.warn('⚠️ WebSocket K线数据包含无效值:', { klineData, newCandlestick });
+      return;
+    }
+
+    console.log('✅ K线数据转换成功:', newCandlestick);
 
     // 更新图表数据
     setChartData(prev => {
@@ -246,8 +262,34 @@ export default function TradingChart({
     });
 
     // 更新当前价格显示
-    setCurrentPrice(klineData.close_price);
-    setVolume(klineData.volume);
+    const price = parseFloat(klineData.close_price);
+    const volume = parseFloat(klineData.volume);
+    
+    // 格式化价格显示
+    let formattedPrice: string;
+    if (price > 1) {
+      formattedPrice = price.toFixed(5);
+    } else if (price > 0.001) {
+      formattedPrice = price.toFixed(8);
+    } else if (price > 0) {
+      formattedPrice = price.toExponential(2);
+    } else {
+      formattedPrice = "0.00000";
+    }
+    
+    setCurrentPrice(formattedPrice);
+    setVolume(volume.toFixed(2));
+    
+    // 计算价格变化（基于图表数据的第一条记录）
+    if (chartData.length > 0) {
+      const firstPrice = chartData[0].open;
+      if (firstPrice > 0) {
+        const change = ((price - firstPrice) / firstPrice) * 100;
+        setPriceChange(`${change >= 0 ? '+' : ''}${change.toFixed(2)}%`);
+      }
+    }
+    
+    console.log('💰 价格信息已更新:', { formattedPrice, volume: volume.toFixed(2) });
     
     // 更新图表系列
     if (candlestickSeriesRef.current && typeof candlestickSeriesRef.current.update === 'function') {
@@ -619,8 +661,8 @@ export default function TradingChart({
       console.log('🚀 开始初始化图表数据...');
       isInitializedRef.current = true;
       
-      // 获取历史K线数据
-      const historicalData = await fetchHistoricalKlines(network, pairAddress, '1m', 100);
+      // 获取历史K线数据 - 使用30秒间隔获取更详细的历史数据
+      const historicalData = await fetchHistoricalKlines(network, pairAddress, '30s', 100);
       
       if (historicalData.length > 0) {
         setChartData(historicalData);
@@ -645,12 +687,16 @@ export default function TradingChart({
     // 连接 WebSocket 获取实时数据
     connect();
 
-    // 订阅 K线数据
+    // 订阅 K线数据 - 使用真实的网络和交易对参数
     const subscription = {
-      network,
-      pairAddress,
-      intervals: ['1m', '15m'] // 订阅 1分钟 和 15分钟 K线
+      network: network || 'sepolia', // 默认使用sepolia网络
+      pairAddress: pairAddress && pairAddress !== '0x123...' ? pairAddress : 
+        // 如果没有提供真实的交易对地址，使用一个示例地址
+        '0x742d35Cc6861C4C687b12F1C3e56b12e9E3CCD0C',
+      intervals: ['30s', '1m'] // 订阅 30秒 和 1分钟 K线，获得更频繁的数据更新
     };
+    
+    console.log('📡 WebSocket订阅参数:', subscription);
 
     // 延迟订阅，确保连接已建立
     const timer = setTimeout(() => {
@@ -765,8 +811,8 @@ export default function TradingChart({
             </div>
           </div>
           <div className="flex gap-2">
-          <Button variant="ghost" size="sm" className="text-gray-600">30s</Button>
-            <Button variant="ghost" size="sm" className="text-white bg-gray-600">1m</Button>
+            <Button variant="ghost" size="sm" className="text-white bg-gray-600">30s</Button>
+            <Button variant="ghost" size="sm" className="text-gray-600">1m</Button>
             <Button variant="ghost" size="sm" className="text-gray-600">5m</Button>            
           </div>
         </div>        
